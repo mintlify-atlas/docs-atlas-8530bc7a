@@ -1,0 +1,653 @@
+---
+title: MCP Servers
+description: Integrate Model Context Protocol servers to give coding agents access to external tools and services
+---
+
+Superset supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing coding agents to interact with external tools, databases, APIs, and services through a standardized interface.
+
+## What is MCP?
+
+MCP (Model Context Protocol) is an open protocol that enables AI agents to securely connect to external data sources and tools. Think of it as a plugin system for AI agents.
+
+<Info>
+MCP servers expose **tools**, **resources**, and **prompts** that agents can use during execution.
+</Info>
+
+### Benefits
+
+<CardGroup cols={2}>
+  <Card title="Extend Agent Capabilities" icon="puzzle-piece">
+    Give agents access to databases, APIs, file systems, and more without modifying agent code.
+  </Card>
+  <Card title="Secure Access" icon="shield">
+    MCP handles authentication and authorization, keeping credentials secure.
+  </Card>
+  <Card title="Standardized Interface" icon="plug">
+    One protocol works with all compatible agents and tools.
+  </Card>
+  <Card title="Composable" icon="layer-group">
+    Combine multiple MCP servers to build powerful workflows.
+  </Card>
+</CardGroup>
+
+## How Superset Uses MCP
+
+Superset integrates MCP in two ways:
+
+1. **Built-in MCP Server**: Superset exposes its own MCP server that allows agents to create workspaces, switch between them, manage tasks, and more.
+2. **MCP Client**: Superset agents can connect to external MCP servers like Neon, Linear, Sentry, and custom servers.
+
+## Configuring MCP Servers
+
+MCP servers are configured in `.mcp.json` at the root of your repository:
+
+```json .mcp.json
+{
+  "mcpServers": {
+    "superset": {
+      "type": "http",
+      "url": "https://api.superset.sh/api/agent/mcp"
+    },
+    "neon": {
+      "type": "http",
+      "url": "https://mcp.neon.tech/mcp"
+    },
+    "linear": {
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp"
+    },
+    "desktop-automation": {
+      "command": "bun",
+      "args": ["run", "packages/desktop-mcp/src/bin.ts"]
+    }
+  }
+}
+```
+
+### Server Types
+
+<Tabs>
+  <Tab title="HTTP (Remote)">
+    Remote MCP servers accessed via HTTP/HTTPS:
+
+    ```json
+    {
+      "servername": {
+        "type": "http",
+        "url": "https://mcp.example.com/mcp"
+      }
+    }
+    ```
+
+    <Note>
+    Remote servers handle authentication on their end, often via OAuth.
+    </Note>
+  </Tab>
+
+  <Tab title="Stdio (Local)">
+    Local MCP servers run as child processes:
+
+    ```json
+    {
+      "servername": {
+        "command": "node",
+        "args": ["path/to/server.js"]
+      }
+    }
+    ```
+
+    The command can be any executable (Node, Python, Bun, etc.).
+  </Tab>
+</Tabs>
+
+## OpenCode Configuration
+
+For agents using OpenCode, MCP servers are configured in `opencode.json`:
+
+```json opencode.json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "external_directory": "allow"
+  },
+  "mcp": {
+    "superset": {
+      "type": "remote",
+      "url": "https://api.superset.sh/api/agent/mcp",
+      "oauth": {}
+    },
+    "neon": {
+      "type": "remote",
+      "url": "https://mcp.neon.tech/mcp"
+    },
+    "maestro": {
+      "type": "local",
+      "command": ["maestro", "mcp"]
+    },
+    "desktop-automation": {
+      "type": "local",
+      "command": ["bun", "run", "packages/desktop-mcp/src/bin.ts"]
+    }
+  }
+}
+```
+
+<Tip>
+OpenCode uses `"type": "remote"` and `"type": "local"` instead of `"type": "http"` and stdio configuration.
+</Tip>
+
+## Available MCP Servers
+
+### Superset MCP Server
+
+Superset's built-in MCP server provides workspace and task management.
+
+**URL**: `https://api.superset.sh/api/agent/mcp` (production) or `http://localhost:3001/api/agent/mcp` (local)
+
+**Available Tools**:
+
+| Tool | Description |
+|:-----|:------------|
+| `create_workspace` | Create a new workspace |
+| `delete_workspace` | Delete a workspace |
+| `switch_workspace` | Switch to a different workspace |
+| `list_workspaces` | List all workspaces |
+| `get_workspace_details` | Get detailed workspace info |
+| `update_workspace` | Update workspace metadata |
+| `list_projects` | List available projects |
+| `create_task` | Create a new task |
+| `update_task` | Update task status |
+| `delete_task` | Delete a task |
+| `list_tasks` | List all tasks |
+| `get_task` | Get task details |
+
+**Example Usage**:
+
+```bash
+# Agent creates a workspace
+opencode "Create a workspace called 'fix-auth-bug' for the main project"
+
+# Agent switches workspace
+opencode "Switch to the 'add-dark-mode' workspace"
+```
+
+### Neon MCP Server
+
+Manage Neon PostgreSQL databases and branches.
+
+**URL**: `https://mcp.neon.tech/mcp`
+
+**Tools**: Create branches, delete branches, run queries, manage databases
+
+### Linear MCP Server
+
+Interact with Linear issues and projects.
+
+**URL**: `https://mcp.linear.app/mcp`
+
+**Tools**: Create issues, update issues, list issues, manage projects
+
+### Sentry MCP Server
+
+Access Sentry error tracking and monitoring.
+
+**URL**: `https://mcp.sentry.dev/mcp`
+
+**Tools**: List errors, get error details, resolve issues
+
+### Expo MCP Server
+
+Manage Expo projects and builds.
+
+**URL**: `https://mcp.expo.dev/mcp`
+
+**Tools**: Start builds, check build status, manage releases
+
+<Note>
+The Expo MCP server is disabled by default in Superset. Set `"enabled": true` to use it.
+</Note>
+
+### Maestro MCP Server
+
+Mobile UI testing automation.
+
+**Command**: `maestro mcp`
+
+**Type**: Local (stdio)
+
+**Tools**: Run tests, capture screenshots, interact with mobile apps
+
+### Desktop Automation MCP Server
+
+Control the Superset desktop app via Chrome DevTools Protocol.
+
+**Command**: `bun run packages/desktop-mcp/src/bin.ts`
+
+**Type**: Local (stdio)
+
+**Available Tools**:
+
+| Tool | Description |
+|:-----|:------------|
+| `navigate` | Navigate to a URL |
+| `click` | Click an element |
+| `type_text` | Type text into an input |
+| `send_keys` | Send keyboard keys |
+| `take_screenshot` | Capture screenshot |
+| `inspect_dom` | Inspect DOM structure |
+| `evaluate_js` | Execute JavaScript |
+| `get_window_info` | Get window information |
+| `get_console_logs` | Retrieve console logs |
+
+**Example Usage**:
+
+```bash
+# Agent tests the UI
+opencode "Open localhost:3000, click the login button, and take a screenshot"
+```
+
+## Building Custom MCP Servers
+
+You can build your own MCP servers to integrate custom tools.
+
+### TypeScript Example
+
+<Steps>
+  <Step title="Install SDK">
+    ```bash
+    bun add @modelcontextprotocol/sdk
+    ```
+  </Step>
+
+  <Step title="Create Server">
+    ```typescript server.ts
+    import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+    import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+    import { z } from "zod";
+
+    const server = new Server(
+      {
+        name: "my-mcp-server",
+        version: "1.0.0",
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
+      }
+    );
+
+    // Define a tool
+    server.setRequestHandler("tools/list", async () => ({
+      tools: [
+        {
+          name: "get_weather",
+          description: "Get weather for a location",
+          inputSchema: z.object({
+            location: z.string(),
+          }),
+        },
+      ],
+    }));
+
+    // Handle tool calls
+    server.setRequestHandler("tools/call", async (request) => {
+      if (request.params.name === "get_weather") {
+        const { location } = request.params.arguments;
+        // Fetch weather data...
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Weather in ${location}: Sunny, 72°F`,
+            },
+          ],
+        };
+      }
+    });
+
+    // Start server
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    ```
+  </Step>
+
+  <Step title="Register Server">
+    Add to `.mcp.json`:
+    ```json
+    {
+      "mcpServers": {
+        "weather": {
+          "command": "bun",
+          "args": ["run", "server.ts"]
+        }
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Use in Agent">
+    ```bash
+    opencode "What's the weather in San Francisco?"
+    ```
+  </Step>
+</Steps>
+
+### Python Example
+
+```python server.py
+import asyncio
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+
+app = Server("my-mcp-server")
+
+@app.list_tools()
+async def list_tools():
+    return [
+        {
+            "name": "greet",
+            "description": "Greet a user",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"}
+                },
+                "required": ["name"]
+            }
+        }
+    ]
+
+@app.call_tool()
+async def call_tool(name, arguments):
+    if name == "greet":
+        username = arguments.get("name")
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"Hello, {username}!"
+                }
+            ]
+        }
+
+async def main():
+    async with stdio_server() as streams:
+        await app.run(
+            streams[0],
+            streams[1],
+            app.create_initialization_options()
+        )
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+Register in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "greeter": {
+      "command": "python",
+      "args": ["server.py"]
+    }
+  }
+}
+```
+
+## Local vs Remote Servers
+
+### Local (Stdio) Servers
+
+**Pros**:
+- Full control over implementation
+- No network latency
+- Can access local file system and processes
+- Easy to debug
+
+**Cons**:
+- Must be installed on every machine
+- No centralized updates
+- Process management required
+
+**Best for**: File system access, local tools, development
+
+### Remote (HTTP) Servers
+
+**Pros**:
+- Centrally hosted and updated
+- No client installation needed
+- Can scale independently
+- Easier to manage authentication
+
+**Cons**:
+- Network latency
+- Requires internet connection
+- Harder to debug
+
+**Best for**: APIs, databases, cloud services, shared tools
+
+## Authentication
+
+### OAuth for Remote Servers
+
+Remote MCP servers often use OAuth for authentication. In OpenCode:
+
+```json opencode.json
+{
+  "mcp": {
+    "superset": {
+      "type": "remote",
+      "url": "https://api.superset.sh/api/agent/mcp",
+      "oauth": {}
+    }
+  }
+}
+```
+
+When an agent connects, Superset will prompt you to authenticate via browser.
+
+### Environment Variables for Local Servers
+
+Local servers can read credentials from environment variables:
+
+```bash .env
+GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
+```
+
+Access in your server:
+
+```typescript
+const token = process.env.GITHUB_TOKEN;
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Server won't start">
+    If a local MCP server fails to start:
+    1. Check that the command is correct in `.mcp.json`
+    2. Verify the executable exists: `which bun`
+    3. Test the command manually in terminal
+    4. Check for error messages in agent output
+    5. Make sure dependencies are installed
+  </Accordion>
+
+  <Accordion title="Agent can't see tools">
+    If agents don't recognize MCP tools:
+    1. Verify the server is configured in `.mcp.json` or `opencode.json`
+    2. Restart the agent
+    3. Check that `tools/list` handler is implemented
+    4. Test with a simple tool first
+  </Accordion>
+
+  <Accordion title="Authentication fails">
+    If OAuth or auth fails:
+    1. Check that credentials are set in environment variables
+    2. Verify OAuth configuration in `opencode.json`
+    3. Try re-authenticating: delete cached tokens
+    4. Check server logs for auth errors
+  </Accordion>
+
+  <Accordion title="Remote server timeout">
+    If remote MCP servers time out:
+    1. Check internet connection
+    2. Verify the URL is correct
+    3. Check if the server is down (try in browser)
+    4. Look for rate limiting or API quota issues
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Card title="Start with Remote Servers" icon="cloud">
+  Use hosted MCP servers (Neon, Linear, Sentry) before building your own. They're maintained and production-ready.
+</Card>
+
+<Card title="Keep Servers Simple" icon="circle">
+  Each MCP server should do one thing well. Don't build monolithic servers with dozens of tools.
+</Card>
+
+<Card title="Use Environment Variables" icon="key">
+  Never hardcode credentials. Use environment variables and `.env` files.
+</Card>
+
+<Card title="Document Your Tools" icon="book">
+  Provide clear descriptions for tools. Agents rely on descriptions to know when to use them.
+</Card>
+
+<Card title="Handle Errors Gracefully" icon="triangle-exclamation">
+  Return helpful error messages. Agents need context to understand what went wrong.
+</Card>
+
+<Card title="Version Your Servers" icon="tag">
+  Use semantic versioning for custom MCP servers. Breaking changes should increment major version.
+</Card>
+
+## Example: Full MCP Server
+
+Here's a complete example of a GitHub MCP server:
+
+```typescript github-mcp.ts
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import { Octokit } from "@octokit/rest";
+
+const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+const server = new Server(
+  { name: "github-mcp", version: "1.0.0" },
+  { capabilities: { tools: {} } }
+);
+
+server.setRequestHandler("tools/list", async () => ({
+  tools: [
+    {
+      name: "list_issues",
+      description: "List issues in a repository",
+      inputSchema: z.object({
+        owner: z.string(),
+        repo: z.string(),
+      }),
+    },
+    {
+      name: "create_issue",
+      description: "Create a new issue",
+      inputSchema: z.object({
+        owner: z.string(),
+        repo: z.string(),
+        title: z.string(),
+        body: z.string().optional(),
+      }),
+    },
+  ],
+}));
+
+server.setRequestHandler("tools/call", async (request) => {
+  const { name, arguments: args } = request.params;
+
+  try {
+    if (name === "list_issues") {
+      const { owner, repo } = args;
+      const { data } = await octokit.issues.listForRepo({ owner, repo });
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(data, null, 2),
+          },
+        ],
+      };
+    }
+
+    if (name === "create_issue") {
+      const { owner, repo, title, body } = args;
+      const { data } = await octokit.issues.create({
+        owner,
+        repo,
+        title,
+        body,
+      });
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Created issue #${data.number}: ${data.html_url}`,
+          },
+        ],
+      };
+    }
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+Register and use:
+
+```json .mcp.json
+{
+  "mcpServers": {
+    "github": {
+      "command": "bun",
+      "args": ["run", "github-mcp.ts"]
+    }
+  }
+}
+```
+
+```bash
+# Agent uses the GitHub MCP server
+opencode "List all open issues in superset-sh/superset and create a new issue for the bug I just found"
+```
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Running Agents" icon="robot" href="/guides/running-agents">
+    Learn how agents use MCP tools
+  </Card>
+  <Card title="Setup Scripts" icon="file-code" href="/guides/setup-teardown-scripts">
+    Configure MCP servers in setup scripts
+  </Card>
+  <Card title="Integrations" icon="plug" href="/guides/integrations">
+    Connect Superset with external tools
+  </Card>
+  <Card title="MCP Specification" icon="book" href="https://modelcontextprotocol.io">
+    Read the full MCP specification
+  </Card>
+</CardGroup>

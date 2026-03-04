@@ -1,0 +1,509 @@
+---
+title: Integrations
+description: Connect Superset with external tools and services for a seamless workflow
+---
+
+Superset integrates with popular development tools to fit into your existing workflow. Open workspaces in your favorite editor, manage Git repositories, and connect to external services.
+
+## IDE Integration
+
+Quickly open workspaces in external editors and IDEs.
+
+### Supported Editors
+
+Superset automatically detects these editors on your system:
+
+- **Visual Studio Code** (`code`)
+- **Cursor** (`cursor`)
+- **Sublime Text** (`subl`)
+- **IntelliJ IDEA** (`idea`)
+- **WebStorm** (`webstorm`)
+- **PyCharm** (`pycharm`)
+- **Vim/Neovim** (`vim`, `nvim`)
+- **Emacs** (`emacs`)
+
+### Opening in External Editor
+
+<Steps>
+  <Step title="Configure Default Editor">
+    Go to **Settings > Editor Preferences** and select your preferred editor. Or set the `EDITOR` environment variable:
+    ```bash
+    export EDITOR="code"
+    ```
+  </Step>
+
+  <Step title="Open Workspace">
+    Press `⌘O` to open the current workspace in your configured editor.
+  </Step>
+</Steps>
+
+<Tip>
+The workspace will open in a new editor window while keeping Superset running for terminal access and change monitoring.
+</Tip>
+
+### Command Line
+
+You can also open editors directly from the terminal:
+
+```bash
+# VS Code
+code .
+
+# Cursor
+cursor .
+
+# Sublime Text
+subl .
+
+# Vim
+vim .
+```
+
+## Git Integration
+
+Superset is built around Git worktrees and provides seamless Git integration.
+
+### Built-in Git Features
+
+- **Changes Panel** (`⌘L`): View diffs, stage changes, and commit
+- **Branch Isolation**: Each workspace is a separate git worktree with its own branch
+- **Status Indicators**: See workspace status at a glance
+
+### Git Commands
+
+All standard Git commands work in Superset terminals:
+
+```bash
+# View status
+git status
+
+# Create branch
+git checkout -b feature/new-feature
+
+# Commit changes
+git add .
+git commit -m "Implement feature"
+
+# Push to remote
+git push origin feature/new-feature
+
+# View log
+git log --oneline
+
+# Merge branches
+git merge main
+```
+
+### Git Worktree Management
+
+Superset manages worktrees automatically, but you can use Git worktree commands directly:
+
+```bash
+# List worktrees
+git worktree list
+
+# Add worktree manually
+git worktree add ../my-workspace feature/my-branch
+
+# Remove worktree
+git worktree remove ../my-workspace
+```
+
+<Warning>
+Deleting workspaces through Superset (`⌘⇧Delete`) properly cleans up worktrees and runs teardown scripts. Avoid manually deleting worktree directories.
+</Warning>
+
+## GitHub CLI Integration
+
+Use the GitHub CLI (`gh`) for managing issues, pull requests, and releases.
+
+### Installation
+
+```bash
+# macOS
+brew install gh
+
+# Authenticate
+gh auth login
+```
+
+### Common Commands
+
+<CodeGroup>
+```bash Pull Requests
+# Create PR
+gh pr create --title "Add feature" --body "Description"
+
+# List PRs
+gh pr list
+
+# View PR
+gh pr view 123
+
+# Checkout PR
+gh pr checkout 123
+
+# Merge PR
+gh pr merge 123 --squash
+```
+
+```bash Issues
+# Create issue
+gh issue create --title "Bug report" --body "Description"
+
+# List issues
+gh issue list
+
+# View issue
+gh issue view 456
+
+# Close issue
+gh issue close 456
+```
+
+```bash Repositories
+# Clone repo
+gh repo clone owner/repo
+
+# View repo
+gh repo view
+
+# Create repo
+gh repo create my-new-repo --public
+
+# Fork repo
+gh repo fork owner/repo
+```
+</CodeGroup>
+
+### GitHub Actions
+
+Monitor CI/CD workflows:
+
+```bash
+# View workflow runs
+gh run list
+
+# Watch latest run
+gh run watch
+
+# View run logs
+gh run view 789 --log
+```
+
+## Caddy Integration
+
+Superset uses [Caddy](https://caddyserver.com/) as an HTTP/2 reverse proxy for Electric SQL streams.
+
+### Why Caddy?
+
+Browsers limit concurrent HTTP/1.1 connections to 6 per domain. When running multiple Electric SQL shape streams, this becomes a bottleneck. Caddy provides HTTP/2 multiplexing to bypass this limit.
+
+### Installation
+
+```bash
+# macOS
+brew install caddy
+
+# Trust Caddy's certificate for HTTPS
+sudo caddy trust
+```
+
+### Configuration
+
+Superset automatically generates a `Caddyfile` during workspace setup:
+
+```caddyfile Caddyfile
+https://localhost:{$CADDY_ELECTRIC_PORT} {
+  reverse_proxy localhost:{$API_PORT} {
+    flush_interval -1
+  }
+}
+```
+
+### Starting Caddy
+
+```bash
+# Start Caddy (usually in setup script)
+caddy start --config Caddyfile
+
+# Stop Caddy (usually in teardown script)
+caddy stop
+```
+
+<Note>
+Caddy runs on port `SUPERSET_PORT_BASE + 10` by default (e.g., 3010 for base port 3000).
+</Note>
+
+## Docker Integration
+
+Run Docker containers alongside your workspaces for databases, caches, and services.
+
+### Starting Containers in Setup Scripts
+
+```bash .superset/setup.sh
+#!/bin/bash
+
+# Start PostgreSQL
+docker run -d \
+  --name "${SUPERSET_WORKSPACE_NAME}-db" \
+  -e POSTGRES_PASSWORD=dev \
+  -p 5432:5432 \
+  postgres:16
+
+# Start Redis
+docker run -d \
+  --name "${SUPERSET_WORKSPACE_NAME}-redis" \
+  -p 6379:6379 \
+  redis:7-alpine
+
+# Start Electric SQL
+docker run -d \
+  --name "${SUPERSET_WORKSPACE_NAME}-electric" \
+  -p 3000:3000 \
+  -e DATABASE_URL="$DATABASE_URL" \
+  electricsql/electric:latest
+```
+
+### Stopping Containers in Teardown Scripts
+
+```bash .superset/teardown.sh
+#!/bin/bash
+
+# Stop and remove all workspace containers
+docker stop "${SUPERSET_WORKSPACE_NAME}-db" 2>/dev/null || true
+docker rm "${SUPERSET_WORKSPACE_NAME}-db" 2>/dev/null || true
+
+docker stop "${SUPERSET_WORKSPACE_NAME}-redis" 2>/dev/null || true
+docker rm "${SUPERSET_WORKSPACE_NAME}-redis" 2>/dev/null || true
+
+docker stop "${SUPERSET_WORKSPACE_NAME}-electric" 2>/dev/null || true
+docker rm "${SUPERSET_WORKSPACE_NAME}-electric" 2>/dev/null || true
+```
+
+### Managing Containers from Terminal
+
+```bash
+# List running containers
+docker ps
+
+# View logs
+docker logs ${SUPERSET_WORKSPACE_NAME}-db
+
+# Follow logs
+docker logs -f ${SUPERSET_WORKSPACE_NAME}-db
+
+# Execute commands in container
+docker exec -it ${SUPERSET_WORKSPACE_NAME}-db psql -U postgres
+
+# Restart container
+docker restart ${SUPERSET_WORKSPACE_NAME}-db
+```
+
+## Database Service Integration
+
+Connect to managed database services like Neon, PlanetScale, and Supabase.
+
+### Neon
+
+Superset's setup scripts can automatically create database branches using [Neon](https://neon.tech):
+
+```bash
+# Create branch
+BRANCH_ID=$(neonctl branches create \
+  --project-id "$NEON_PROJECT_ID" \
+  --name "$SUPERSET_WORKSPACE_NAME" \
+  --output json | jq -r '.branch.id')
+
+# Get connection string
+DATABASE_URL=$(neonctl connection-string "$BRANCH_ID" \
+  --project-id "$NEON_PROJECT_ID" \
+  --pooled)
+
+echo "DATABASE_URL=$DATABASE_URL" >> .env
+```
+
+See the [Setup/Teardown Scripts](/guides/setup-teardown-scripts) guide for more examples.
+
+### PlanetScale
+
+Create branches for MySQL databases:
+
+```bash
+# Create branch
+pscale branch create my-database "$SUPERSET_WORKSPACE_NAME"
+
+# Get connection string
+DATABASE_URL=$(pscale connect my-database "$SUPERSET_WORKSPACE_NAME" --format json | jq -r .url)
+```
+
+### Supabase
+
+Use Supabase CLI for local development:
+
+```bash
+# Initialize Supabase
+supabase init
+
+# Start local Supabase
+supabase start
+
+# Get connection string
+supabase status | grep "DB URL"
+```
+
+## External Tool Launching
+
+Launch external tools from Superset terminals.
+
+### Browser
+
+Open URLs in your default browser:
+
+```bash
+# macOS
+open http://localhost:3000
+
+# Linux
+xdg-open http://localhost:3000
+
+# Windows
+start http://localhost:3000
+```
+
+### Database Clients
+
+```bash
+# Postico (PostgreSQL GUI for macOS)
+open -a Postico "postgres://localhost:5432/mydb"
+
+# TablePlus
+open -a TablePlus "postgres://localhost:5432/mydb"
+
+# psql (command line)
+psql "$DATABASE_URL"
+```
+
+### API Clients
+
+```bash
+# Postman
+open -a Postman
+
+# Insomnia
+open -a Insomnia
+
+# HTTPie (CLI)
+http GET localhost:3000/api/users
+```
+
+## Custom Integrations
+
+Build your own integrations using Superset's MCP server.
+
+### Available Tools
+
+The Superset MCP server provides tools for:
+- Creating workspaces
+- Switching workspaces
+- Listing workspaces
+- Updating workspace metadata
+- Deleting workspaces
+- Managing tasks
+
+See the [MCP Servers](/guides/mcp-servers) guide for details.
+
+### Example: Custom CLI Tool
+
+```bash superset-cli.sh
+#!/bin/bash
+# Custom CLI tool that uses Superset MCP
+
+SUPERSET_API="http://localhost:3001/api/agent/mcp"
+
+case "$1" in
+  create)
+    curl -X POST "$SUPERSET_API/workspaces" \
+      -H "Content-Type: application/json" \
+      -d '{"name": "'"$2"'", "projectId": "'"$3"'"}'
+    ;;
+  list)
+    curl -X GET "$SUPERSET_API/workspaces"
+    ;;
+  *)
+    echo "Usage: $0 {create|list} [args]"
+    exit 1
+    ;;
+esac
+```
+
+## Environment Variables
+
+Integrations often require environment variables. Manage them in your `.env` file:
+
+```bash .env
+# GitHub
+GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+
+# Neon
+NEON_PROJECT_ID=xxx-xxx-xxx
+NEON_API_KEY=xxxxxxxx
+
+# Docker
+DOCKER_HOST=unix:///var/run/docker.sock
+
+# Editor
+EDITOR=code
+```
+
+<Warning>
+Never commit `.env` files to Git. Add `.env` to your `.gitignore`.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Editor command not found">
+    If `⌘O` fails to open your editor:
+    1. Make sure the editor is installed
+    2. Check that the command is in your PATH: `which code`
+    3. Set the `EDITOR` environment variable manually
+    4. Try running the command in terminal first
+  </Accordion>
+
+  <Accordion title="GitHub CLI not authenticated">
+    If `gh` commands fail:
+    1. Run `gh auth login`
+    2. Follow the authentication flow
+    3. Verify: `gh auth status`
+  </Accordion>
+
+  <Accordion title="Docker containers won't start">
+    If Docker commands fail:
+    1. Make sure Docker Desktop is running
+    2. Check Docker status: `docker ps`
+    3. Verify port availability: `lsof -i :5432`
+    4. Check logs: `docker logs <container-name>`
+  </Accordion>
+
+  <Accordion title="Caddy certificate errors">
+    If HTTPS connections fail:
+    1. Trust Caddy's certificate: `sudo caddy trust`
+    2. Restart Caddy
+    3. Check Caddy status: `caddy status`
+  </Accordion>
+</AccordionGroup>
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Setup Scripts" icon="file-code" href="/guides/setup-teardown-scripts">
+    Automate integrations with setup scripts
+  </Card>
+  <Card title="MCP Servers" icon="server" href="/guides/mcp-servers">
+    Build integrations using MCP
+  </Card>
+  <Card title="Workspace Management" icon="folder" href="/guides/workspace-management">
+    Learn how workspaces work
+  </Card>
+</CardGroup>

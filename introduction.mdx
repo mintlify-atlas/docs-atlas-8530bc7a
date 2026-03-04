@@ -1,0 +1,146 @@
+---
+title: "Introduction to Superset"
+description: "A turbocharged terminal for running multiple coding agents simultaneously with git worktree isolation"
+---
+
+## What is Superset?
+
+Superset is a desktop application that allows you to run multiple CLI coding agents simultaneously on your machine. It's the terminal built specifically for orchestrating AI coding agents at scale.
+
+Think of it as a turbocharged terminal that lets you:
+- Run 10+ coding agents in parallel without context switching
+- Isolate each task in its own git worktree so agents never interfere
+- Monitor all your agents from one central interface
+- Review changes quickly with a built-in diff viewer
+
+<Info>
+  Superset is currently optimized for macOS. Windows and Linux support is untested.
+</Info>
+
+## Why Superset exists
+
+Coding agents are powerful, but running multiple agents simultaneously creates challenges:
+
+**The problems:**
+- **Context switching overhead** — Switching between terminal windows, editors, and agent sessions wastes time
+- **Workspace conflicts** — Running multiple agents in the same directory causes file conflicts and git chaos
+- **Lost productivity** — Manually monitoring agents means you can't work on other tasks while they run
+- **Difficult reviews** — Reviewing agent changes across scattered terminals and files is tedious
+
+**Superset's solution:**
+- **Parallel execution** — Run 10+ agents simultaneously without performance degradation
+- **Git worktree isolation** — Each workspace gets its own branch and working directory
+- **Centralized monitoring** — Track all agent status from one interface
+- **Built-in diff viewer** — Review and edit changes without leaving the app
+
+## Key features
+
+Superset provides everything you need to run coding agents at scale:
+
+<CardGroup cols={2}>
+  <Card title="Parallel execution" icon="bolt">
+    Run 10+ coding agents simultaneously on your machine without context switching overhead.
+  </Card>
+  
+  <Card title="Worktree isolation" icon="code-branch">
+    Each task gets its own git branch and working directory so agents never interfere with each other.
+  </Card>
+  
+  <Card title="Agent monitoring" icon="chart-line">
+    Track agent status and get notified when changes are ready for review.
+  </Card>
+  
+  <Card title="Built-in diff viewer" icon="code-compare">
+    Inspect and edit agent changes without leaving the app.
+  </Card>
+  
+  <Card title="Workspace presets" icon="layer-group">
+    Automate environment setup, dependency installation, and configuration.
+  </Card>
+  
+  <Card title="Universal compatibility" icon="puzzle-piece">
+    Works with any CLI agent that runs in a terminal.
+  </Card>
+  
+  <Card title="Quick context switching" icon="arrows-rotate">
+    Jump between tasks with keyboard shortcuts as agents complete their work.
+  </Card>
+  
+  <Card title="IDE integration" icon="window-restore">
+    Open any workspace in your favorite editor with one click.
+  </Card>
+</CardGroup>
+
+## Supported agents
+
+Superset works with any CLI-based coding agent. If it runs in a terminal, it runs on Superset.
+
+| Agent | Status |
+|:------|:-------|
+| [Claude Code](https://github.com/anthropics/claude-code) | Fully supported |
+| [OpenAI Codex CLI](https://github.com/openai/codex) | Fully supported |
+| [Cursor Agent](https://docs.cursor.com/agent) | Fully supported |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Fully supported |
+| [GitHub Copilot](https://github.com/features/copilot) | Fully supported |
+| [OpenCode](https://github.com/opencode-ai/opencode) | Fully supported |
+| Any other CLI agent | Will work |
+
+<Tip>
+  Superset doesn't require agent-specific configuration. Simply run your agent's CLI command in any workspace terminal.
+</Tip>
+
+## Who should use Superset?
+
+Superset is ideal for:
+
+- **Developers managing multiple features** — Work on several features simultaneously by running different agents in isolated workspaces
+- **Teams scaling agent usage** — Coordinate multiple agents across different parts of a codebase without conflicts
+- **Engineering managers** — Monitor agent progress across your team from a central dashboard
+- **AI researchers** — Test different agents and prompts in parallel to compare results
+- **DevOps engineers** — Automate infrastructure changes across multiple repositories simultaneously
+
+## How it works
+
+Superset leverages **git worktrees** to create isolated environments for each agent:
+
+<Steps>
+  <Step title="Create a workspace">
+    When you create a workspace, Superset creates a new git worktree linked to a new branch.
+  </Step>
+  
+  <Step title="Run setup scripts">
+    Automatically runs setup commands defined in `.superset/config.json` (like `bun install` or copying environment files).
+  </Step>
+  
+  <Step title="Launch your agent">
+    Open a terminal and run any CLI coding agent with your task.
+  </Step>
+  
+  <Step title="Monitor and review">
+    Watch the agent work in real-time. When done, review changes in the diff viewer and merge to your main branch.
+  </Step>
+</Steps>
+
+<Info>
+  Git worktrees allow you to have multiple working directories from the same repository, each on a different branch. This means your agents never conflict with each other or your main codebase.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Download Superset or build from source
+  </Card>
+  
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get your first agent running in under 5 minutes
+  </Card>
+  
+  <Card title="Workspaces" icon="layer-group" href="/concepts/workspaces">
+    Learn about workspace isolation and management
+  </Card>
+  
+  <Card title="Keyboard shortcuts" icon="keyboard" href="/guides/keyboard-shortcuts">
+    Master Superset's productivity shortcuts
+  </Card>
+</CardGroup>

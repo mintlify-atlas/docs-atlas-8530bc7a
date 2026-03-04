@@ -1,0 +1,312 @@
+---
+title: Contributing
+description: How to contribute to Superset
+---
+
+We welcome contributions! Whether you want to fix a bug, add a feature, improve documentation, or help in any other way, your contribution is valuable to the Superset community.
+
+## Before You Start
+
+Before contributing, please:
+
+1. **Discuss your change**: For significant changes, [open an issue](https://github.com/superset-sh/superset/issues) or start a [discussion](https://github.com/superset-sh/superset/discussions) first
+2. **Review the Code of Conduct**: Follow our [Code of Conduct](https://github.com/superset-sh/superset/blob/main/CODE_OF_CONDUCT.md) in all interactions
+3. **Check existing issues**: Search for similar issues or PRs to avoid duplicates
+
+## Pull Request Process
+
+### 1. Fork the Repository
+
+[Create a fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) of the Superset repository:
+
+1. Go to [github.com/superset-sh/superset](https://github.com/superset-sh/superset)
+2. Click the "Fork" button in the top-right corner
+3. Select your account as the destination
+
+### 2. Clone Your Fork
+
+```bash
+git clone https://github.com/YOUR_USERNAME/superset.git
+cd superset
+```
+
+### 3. Set Up Development Environment
+
+**Install dependencies:**
+
+```bash
+# Install Bun (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+
+# Install Caddy (macOS)
+brew install caddy
+
+# Install GitHub CLI (macOS)
+brew install gh
+```
+
+**Configure environment:**
+
+```bash
+# Copy example env file
+cp .env.example .env
+
+# For local development, skip env validation
+echo 'SKIP_ENV_VALIDATION=1' >> .env
+
+# Set up Caddy config
+cp Caddyfile.example Caddyfile
+```
+
+**Install project dependencies:**
+
+```bash
+bun install
+```
+
+### 4. Create a Feature Branch
+
+```bash
+git checkout -b feature/amazing-feature
+```
+
+Use a descriptive branch name:
+- `feature/add-workspace-templates`
+- `fix/terminal-paste-issue`
+- `docs/update-setup-guide`
+
+### 5. Make Your Changes
+
+Write your code following our [style guidelines](#code-style).
+
+**Run development server:**
+
+```bash
+bun run dev
+```
+
+This starts all dev servers including the desktop app.
+
+### 6. Test Your Changes
+
+```bash
+# Run tests
+bun test
+
+# Type checking
+bun run typecheck
+
+# Linting
+bun run lint
+```
+
+### 7. Commit Your Changes
+
+Follow the [Clean Code](https://gist.github.com/wojteklu/73c6914cc446146b8b533c0988cf8d29) principles and the boy scout rule:
+
+> "Leave the code cleaner, not messier, than how you found it."
+
+```bash
+git add .
+git commit -m "Add amazing feature"
+```
+
+Write clear, descriptive commit messages:
+- ✅ "Fix terminal paste handling for multi-line content"
+- ✅ "Add workspace template configuration support"
+- ❌ "fix bug"
+- ❌ "updates"
+
+### 8. Push to Your Fork
+
+```bash
+git push origin feature/amazing-feature
+```
+
+### 9. Open a Pull Request
+
+[Create a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) from your fork:
+
+1. Go to your fork on GitHub
+2. Click "Contribute" → "Open pull request"
+3. Fill in the PR description with:
+   - Clear description of changes
+   - Link to related issues (if applicable)
+   - Screenshots or videos (for UI changes)
+   - Testing steps
+4. **Check the box** "Allow edits from maintainers" - this speeds up the review process
+5. Request a review from one of the maintainers
+
+### 10. Code Review
+
+Maintainers will review your PR and may:
+- Request changes
+- Ask questions
+- Suggest improvements
+- Approve and merge
+
+Be responsive to feedback and make requested changes promptly.
+
+## Code Style
+
+Superset uses **Biome** for code formatting and linting.
+
+### Formatting & Linting
+
+```bash
+# Check for issues (no changes)
+bun run lint
+
+# Fix all auto-fixable issues
+bun run lint:fix
+
+# Format code only
+bun run format
+
+# Check formatting only (CI)
+bun run format:check
+```
+
+**Biome runs at root level** for the entire monorepo:
+- `biome check --write --unsafe` = format + lint + organize imports + fix all
+- `biome check` = check only (no changes)
+- `biome format` = format only
+
+### Code Quality Guidelines
+
+1. **Type safety**: Avoid `any` unless absolutely necessary. Use proper TypeScript types
+2. **Clean Code**: Follow [Clean Code](https://gist.github.com/wojteklu/73c6914cc446146b8b533c0988cf8d29) principles
+3. **Boy Scout Rule**: Leave code cleaner than you found it
+4. **Prefer `gh` CLI**: Use GitHub CLI over raw `git` commands where possible
+5. **Co-locate dependencies**: Keep tests, hooks, utils next to the files using them
+
+## Monorepo Structure
+
+Superset is a Bun + Turbo monorepo:
+
+### Apps
+
+- `apps/web` - Main web application (app.superset.sh)
+- `apps/marketing` - Marketing site (superset.sh)
+- `apps/admin` - Admin dashboard
+- `apps/api` - API backend
+- `apps/desktop` - Electron desktop application
+- `apps/docs` - Documentation site
+- `apps/mobile` - React Native mobile app (Expo)
+
+### Packages
+
+- `packages/ui` - Shared UI components (shadcn/ui + TailwindCSS v4)
+- `packages/db` - Drizzle ORM database schema
+- `packages/auth` - Authentication
+- `packages/agent` - Agent logic
+- `packages/trpc` - Shared tRPC definitions
+- `packages/shared` - Shared utilities
+- `packages/mcp` - MCP integration
+- `packages/desktop-mcp` - Desktop MCP server
+- `packages/local-db` - Local SQLite database
+- `packages/durable-session` - Durable session management
+- `packages/email` - Email templates/sending
+- `packages/scripts` - CLI tooling
+
+### Common Commands
+
+```bash
+# Development
+bun dev                    # Start all dev servers
+bun test                   # Run tests
+bun build                  # Build all packages
+
+# Code Quality
+bun run lint               # Check for lint issues
+bun run lint:fix           # Fix auto-fixable issues
+bun run format             # Format code
+bun run typecheck          # Type check all packages
+
+# Maintenance
+bun run clean              # Clean root node_modules
+bun run clean:workspaces   # Clean all workspace node_modules
+```
+
+## Testing Guidelines
+
+1. **Write tests**: Add tests for new features and bug fixes
+2. **Run tests locally**: Ensure all tests pass before submitting PR
+3. **Co-locate tests**: Place test files next to the code they test
+
+```bash
+# Run all tests
+bun test
+
+# Run tests in watch mode
+bun test --watch
+```
+
+## Database Changes
+
+**IMPORTANT**: Never manually edit files in `packages/db/drizzle/`. These are auto-generated.
+
+To create a database migration:
+
+1. Modify schema files in `packages/db/src/schema/`
+2. Generate migration:
+   ```bash
+   bunx drizzle-kit generate --name="migration_name_snake_case"
+   ```
+3. Never run migrations yourself - let maintainers handle this
+
+## Documentation
+
+Documentation improvements are always welcome!
+
+- **Docs site**: Located in `apps/docs`
+- **README**: Main README at repository root
+- **Code comments**: Add JSDoc comments for complex functions
+
+To run the docs site locally:
+
+```bash
+bun run dev:docs
+```
+
+## Community Guidelines
+
+We follow the [Contributor Covenant Code of Conduct](https://github.com/superset-sh/superset/blob/main/CODE_OF_CONDUCT.md).
+
+### Our Standards
+
+Examples of behavior that contributes to a positive environment:
+- Demonstrating empathy and kindness
+- Being respectful of differing opinions
+- Giving and gracefully accepting constructive feedback
+- Focusing on what's best for the community
+
+Examples of unacceptable behavior:
+- Sexualized language or imagery
+- Trolling, insulting, or derogatory comments
+- Public or private harassment
+- Publishing others' private information
+
+### Enforcement
+
+Instances of unacceptable behavior may be reported to [founders@superset.sh](mailto:founders@superset.sh).
+
+## Getting Help
+
+If you need help with contributing:
+
+- **Discord**: Join [Discord](https://discord.gg/cZeD9WYcV7) for real-time help
+- **Discussions**: Ask in [GitHub Discussions](https://github.com/superset-sh/superset/discussions)
+- **Issues**: Check [existing issues](https://github.com/superset-sh/superset/issues) for similar questions
+
+## Recognition
+
+All contributors are recognized in our README and release notes. Thank you for making Superset better!
+
+<a href="https://github.com/superset-sh/superset/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=superset-sh/superset" />
+</a>
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the Apache 2.0 License.

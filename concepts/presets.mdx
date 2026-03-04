@@ -1,0 +1,552 @@
+---
+title: Presets
+description: Workspace templates for quickly launching common development tasks
+---
+
+## What are Presets?
+
+Presets are workspace templates that define a set of commands to run when creating a new workspace. They allow you to automate repetitive setup tasks and jump straight into development.
+
+<Info>
+  Think of presets as "saved terminal commands" that run automatically when you create a workspace.
+</Info>
+
+### Use Cases
+
+- **Agent Launch**: Start a coding agent with a specific prompt
+- **Dev Environment**: Launch dev server, database, and monitoring tools
+- **Test Suite**: Run tests in watch mode
+- **Build Pipeline**: Start build watchers and linters
+- **Multi-Service Setup**: Launch multiple services (API, frontend, workers)
+
+## How to Create Presets
+
+### Via Settings UI
+
+1. Open **Settings** → **Terminal Presets** (`⌘/`)
+2. Click **Add Preset**
+3. Configure your preset:
+   - **Name**: Display name (e.g., "Dev Server")
+   - **Description**: What the preset does (optional)
+   - **Commands**: Shell commands to execute
+   - **Working Directory**: Where to run commands (relative to workspace root)
+   - **Execution Mode**: How to run the commands
+
+### Execution Modes
+
+Presets support three execution modes:
+
+<CardGroup cols={3}>
+  <Card title="Split Pane" icon="table-columns">
+    Runs all commands in the active tab, each in its own split pane.
+    
+    **Best for**: Multiple long-running services
+  </Card>
+  
+  <Card title="New Tab" icon="window-restore">
+    Creates a new tab for each command.
+    
+    **Best for**: Independent tasks you want to monitor separately
+  </Card>
+  
+  <Card title="New Tab + Split" icon="table-cells">
+    Creates one new tab with all commands in split panes.
+    
+    **Best for**: Related commands you want grouped together
+  </Card>
+</CardGroup>
+
+## Preset Configuration
+
+Presets are stored in the local database with this structure:
+
+```typescript
+{
+  id: string;                        // UUID
+  name: string;                      // Display name
+  description?: string;              // Optional description
+  cwd: string;                       // Working directory (relative path)
+  commands: string[];                // Shell commands to run
+  pinnedToBar?: boolean;             // Show in presets bar
+  isDefault?: boolean;               // Apply automatically to new tabs
+  applyOnWorkspaceCreated?: boolean; // Run when workspace is created
+  applyOnNewTab?: boolean;           // Run when creating new tab
+  executionMode?: ExecutionMode;     // "split-pane" | "new-tab" | "new-tab-split-pane"
+}
+```
+
+### Example Presets
+
+<Accordion title="Launch Claude Code Agent">
+  ```json
+  {
+    "name": "Claude Agent",
+    "description": "Start Claude Code with task prompt",
+    "cwd": ".",
+    "commands": ["claude code"],
+    "executionMode": "split-pane",
+    "pinnedToBar": true
+  }
+  ```
+</Accordion>
+
+<Accordion title="Full Stack Dev Environment">
+  ```json
+  {
+    "name": "Dev Environment",
+    "description": "Start API, frontend, and database",
+    "cwd": ".",
+    "commands": [
+      "cd api && bun run dev",
+      "cd web && bun run dev",
+      "docker-compose up postgres redis"
+    ],
+    "executionMode": "new-tab-split-pane",
+    "pinnedToBar": true
+  }
+  ```
+</Accordion>
+
+<Accordion title="Test Runner">
+  ```json
+  {
+    "name": "Tests",
+    "description": "Run tests in watch mode",
+    "cwd": ".",
+    "commands": ["bun test --watch"],
+    "executionMode": "new-tab",
+    "pinnedToBar": false
+  }
+  ```
+</Accordion>
+
+<Accordion title="Build Watchers">
+  ```json
+  {
+    "name": "Build Tools",
+    "description": "TypeScript compiler and ESLint watcher",
+    "cwd": ".",
+    "commands": [
+      "bun run typecheck --watch",
+      "bun run lint --watch"
+    ],
+    "executionMode": "split-pane",
+    "pinnedToBar": true
+  }
+  ```
+</Accordion>
+
+## Common Preset Patterns
+
+### 1. Agent Launch Preset
+
+Launch a coding agent with a specific task:
+
+```json
+{
+  "name": "OpenCode Agent",
+  "cwd": ".",
+  "commands": ["opencode"],
+  "executionMode": "split-pane",
+  "applyOnWorkspaceCreated": true
+}
+```
+
+<Tip>
+  Set `applyOnWorkspaceCreated: true` to automatically launch the agent when creating a workspace with `⌘⇧N` (Quick Create).
+</Tip>
+
+### 2. Dev Server Preset
+
+Start your development server:
+
+```json
+{
+  "name": "Dev Server",
+  "cwd": ".",
+  "commands": ["bun run dev"],
+  "executionMode": "new-tab"
+}
+```
+
+### 3. Multi-Service Preset
+
+Launch multiple services in split panes:
+
+```json
+{
+  "name": "Full Stack",
+  "cwd": ".",
+  "commands": [
+    "cd apps/api && bun run dev",
+    "cd apps/web && bun run dev",
+    "cd apps/worker && bun run dev"
+  ],
+  "executionMode": "split-pane"
+}
+```
+
+### 4. Database Setup Preset
+
+Start databases and run migrations:
+
+```json
+{
+  "name": "Database Setup",
+  "cwd": ".",
+  "commands": [
+    "docker-compose up -d postgres redis",
+    "sleep 5 && bun run migrate"
+  ],
+  "executionMode": "new-tab"
+}
+```
+
+### 5. Test Suite Preset
+
+Run tests across multiple packages:
+
+```json
+{
+  "name": "Test All",
+  "cwd": ".",
+  "commands": [
+    "cd packages/api && bun test --watch",
+    "cd packages/web && bun test --watch",
+    "cd packages/shared && bun test --watch"
+  ],
+  "executionMode": "new-tab-split-pane"
+}
+```
+
+## Quick Create with Presets
+
+The fastest way to use presets:
+
+### Keyboard Shortcut: `⌘⇧N`
+
+Press `⌘⇧N` to instantly create a workspace with your default preset.
+
+**What happens**:
+1. New workspace is created
+2. Default preset commands run automatically
+3. You're ready to work immediately
+
+<Note>
+  Mark a preset as default by enabling **Apply on Workspace Created** in preset settings.
+</Note>
+
+### Ctrl+[1-9]: Launch Pinned Preset
+
+Press `Ctrl+1` through `Ctrl+9` to launch presets pinned to the presets bar.
+
+**Setup**:
+1. Open **Settings** → **Terminal Presets**
+2. Enable **Pin to Presets Bar** for your favorite presets
+3. They'll appear in the terminal interface
+4. Press `Ctrl+[1-9]` to launch them
+
+## Preset Options
+
+### Pin to Presets Bar
+
+**Option**: `pinnedToBar: boolean`
+
+Displays the preset in the terminal presets bar for quick access.
+
+```json
+{
+  "pinnedToBar": true  // Shows preset in UI
+}
+```
+
+### Default Preset
+
+**Option**: `isDefault: boolean`
+
+Marks the preset as the default for new workspaces.
+
+```json
+{
+  "isDefault": true  // Used by ⌘⇧N
+}
+```
+
+<Warning>
+  Only one preset can be marked as default. Setting a new default automatically unmarks the previous one.
+</Warning>
+
+### Auto-Apply on Workspace Created
+
+**Option**: `applyOnWorkspaceCreated: boolean`
+
+Automatically runs the preset when creating a workspace with Quick Create (`⌘⇧N`).
+
+```json
+{
+  "applyOnWorkspaceCreated": true
+}
+```
+
+### Auto-Apply on New Tab
+
+**Option**: `applyOnNewTab: boolean`
+
+Automatically runs the preset when creating a new terminal tab (`⌘T`).
+
+```json
+{
+  "applyOnNewTab": true
+}
+```
+
+<Tip>
+  Use `applyOnNewTab` to automatically start your dev server in every new terminal.
+</Tip>
+
+## Working Directory
+
+**Option**: `cwd: string`
+
+The working directory is relative to the workspace root.
+
+```json
+{
+  "cwd": "."              // Workspace root
+}
+
+{
+  "cwd": "apps/api"       // apps/api subdirectory
+}
+
+{
+  "cwd": "packages/web"   // packages/web subdirectory  
+}
+```
+
+<Info>
+  All commands in the preset run from this directory.
+</Info>
+
+## Environment Variables in Presets
+
+Preset commands have access to:
+
+| Variable | Description |
+|----------|-------------|
+| `SUPERSET_WORKSPACE_NAME` | Current workspace name |
+| `SUPERSET_ROOT_PATH` | Path to main repository |
+
+Use them in your preset commands:
+
+```json
+{
+  "name": "Echo Workspace",
+  "commands": [
+    "echo \"Working in workspace: $SUPERSET_WORKSPACE_NAME\"",
+    "echo \"Main repo at: $SUPERSET_ROOT_PATH\""
+  ]
+}
+```
+
+## Advanced Preset Techniques
+
+### Conditional Commands
+
+Use shell conditionals in preset commands:
+
+```json
+{
+  "name": "Smart Dev Server",
+  "commands": [
+    "[ -f .env ] && echo '.env found' || echo 'Copying .env from main repo' && cp $SUPERSET_ROOT_PATH/.env .",
+    "bun install",
+    "bun run dev"
+  ]
+}
+```
+
+### Sequential vs Parallel
+
+Commands in a preset run in **parallel** by default (each in its own terminal pane).
+
+For **sequential** execution, chain commands with `&&`:
+
+```json
+{
+  "name": "Sequential Setup",
+  "commands": [
+    "bun install && bun run migrate && bun run seed && bun run dev"
+  ]
+}
+```
+
+### Background Processes
+
+Launch background processes in presets:
+
+```json
+{
+  "name": "Background Services",
+  "commands": [
+    "docker-compose up -d",  // Runs in background
+    "bun run dev"             // Runs in foreground
+  ]
+}
+```
+
+## Preset Management
+
+### Editing Presets
+
+1. Open **Settings** → **Terminal Presets**
+2. Click the preset to edit
+3. Modify settings
+4. Click **Save**
+
+### Deleting Presets
+
+1. Open **Settings** → **Terminal Presets**
+2. Click the preset to delete
+3. Click **Delete Preset**
+4. Confirm deletion
+
+### Exporting Presets
+
+Presets are stored in your local Superset database. To share presets:
+
+1. Manually copy preset configuration from Settings
+2. Share the JSON with your team
+3. They can recreate the preset in their Superset instance
+
+<Note>
+  Future versions of Superset will support preset import/export.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Descriptive Names" icon="tag">
+    Use clear, descriptive names. "Dev Server" is better than "Preset 1".
+  </Card>
+  
+  <Card title="Keep Commands Simple" icon="code">
+    Avoid complex shell scripts in presets. Use separate script files for complex logic.
+  </Card>
+  
+  <Card title="Pin Your Favorites" icon="thumbtack">
+    Pin frequently-used presets to the presets bar for quick access via Ctrl+[1-9].
+  </Card>
+  
+  <Card title="One Default Only" icon="star">
+    Mark only one preset as default for Quick Create. Choose your most common workflow.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Preset commands don't run">
+  **Possible causes**:
+  - Working directory doesn't exist
+  - Command binary not in PATH
+  - Shell syntax error
+  
+  **Solution**: Test commands manually in a terminal first.
+</Accordion>
+
+<Accordion title="Environment variables not available">
+  **Cause**: Variables like `$SUPERSET_WORKSPACE_NAME` only exist in workspace terminals, not your main shell.
+  
+  **Solution**: These variables are automatically available when running preset commands in Superset workspaces.
+</Accordion>
+
+<Accordion title="Commands run in wrong directory">
+  **Cause**: `cwd` is set incorrectly or directory doesn't exist in worktree.
+  
+  **Solution**: Verify the `cwd` path exists in your workspace. Use `.` for workspace root.
+</Accordion>
+
+<Accordion title="Preset keyboard shortcut doesn't work">
+  **Cause**: Preset isn't pinned to the presets bar.
+  
+  **Solution**: Enable **Pin to Presets Bar** in preset settings.
+</Accordion>
+
+## Examples from Real Projects
+
+### Next.js Monorepo
+
+```json
+{
+  "name": "Next.js Dev",
+  "description": "Start Next.js dev server with turbopack",
+  "cwd": "apps/web",
+  "commands": ["bun run dev"],
+  "executionMode": "new-tab",
+  "pinnedToBar": true
+}
+```
+
+### Rust Project
+
+```json
+{
+  "name": "Cargo Watch",
+  "description": "Run cargo watch for auto-rebuild",
+  "cwd": ".",
+  "commands": ["cargo watch -x run"],
+  "executionMode": "split-pane",
+  "pinnedToBar": true
+}
+```
+
+### Python Flask App
+
+```json
+{
+  "name": "Flask Dev",
+  "description": "Start Flask with debug mode",
+  "cwd": ".",
+  "commands": [
+    "source venv/bin/activate && flask --app src.app --debug run"
+  ],
+  "executionMode": "new-tab",
+  "pinnedToBar": true
+}
+```
+
+### Go Microservices
+
+```json
+{
+  "name": "Go Services",
+  "description": "Start API and worker services",
+  "cwd": ".",
+  "commands": [
+    "cd cmd/api && go run .",
+    "cd cmd/worker && go run ."
+  ],
+  "executionMode": "split-pane",
+  "pinnedToBar": true
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Workspaces" icon="window" href="/concepts/workspaces">
+    Learn how presets integrate with workspaces
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/concepts/configuration">
+    Configure setup scripts that run before presets
+  </Card>
+  
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    Create presets to auto-launch coding agents
+  </Card>
+  
+  <Card title="Keyboard Shortcuts" icon="keyboard" href="/guides/keyboard-shortcuts">
+    Master all preset keyboard shortcuts
+  </Card>
+</CardGroup>

@@ -1,0 +1,467 @@
+---
+title: Git Worktrees
+description: How Superset uses git worktrees for parallel agent isolation
+---
+
+## What are Git Worktrees?
+
+A git worktree creates a new working directory that shares the same `.git` repository as your main directory. This allows you to have multiple branches checked out simultaneously, each in its own directory, all backed by a single git object store.
+
+<Info>
+  Think of worktrees as "multiple checkouts of the same repository" without duplicating the entire git history.
+</Info>
+
+### Anatomy of a Worktree
+
+When you create a worktree, git establishes:
+
+**Isolated per worktree**:
+- Working directory (files on disk)
+- Branch checkout
+- Index (staging area)
+- HEAD reference
+
+**Shared across all worktrees**:
+- Object store (commits, trees, blobs)
+- Refs and branches
+- Config and remotes
+- Hooks
+
+```bash
+~/my-project/                     # Main worktree
+├── .git/                         # Main git directory
+│   ├── objects/                  # Shared object store
+│   ├── refs/                     # Shared refs
+│   └── worktrees/                # Worktree metadata
+│       ├── feature-a/            # Metadata for worktree A
+│       └── feature-b/            # Metadata for worktree B
+└── src/
+
+~/.superset/worktrees/my-project/
+├── feature-a/                    # Worktree A
+│   ├── .git                      # Points to main .git/worktrees/feature-a
+│   └── src/
+└── feature-b/                    # Worktree B
+    ├── .git                      # Points to main .git/worktrees/feature-b
+    └── src/
+```
+
+## Why Worktrees Solve Parallel Agent Problems
+
+### The Problem: Shared Working Directory
+
+Running multiple coding agents in the same working directory causes chaos:
+
+```
+❌ Without Worktrees:
+
+Agent 1: Editing src/auth.ts
+Agent 2: Editing src/auth.ts  ← CONFLICT!
+
+Agent 1: Committing changes
+Agent 2: Staging different changes to same files  ← CORRUPTION!
+
+Agent 1: Installing dependencies
+Agent 2: Running tests that depend on old dependencies  ← FAILURES!
+```
+
+### The Solution: Isolated Worktrees
+
+With worktrees, each agent works in complete isolation:
+
+```
+✅ With Worktrees:
+
+Agent 1 (worktree: add-auth):
+  └─ Working on branch: feature/auth
+  └─ Editing: ~/.superset/worktrees/my-app/add-auth/src/auth.ts
+
+Agent 2 (worktree: refactor-api):
+  └─ Working on branch: refactor/api  
+  └─ Editing: ~/.superset/worktrees/my-app/refactor-api/src/api.ts
+
+No conflicts, no corruption, no failures!
+```
+
+## How Superset Uses Worktrees
+
+### Workspace Creation
+
+When you create a workspace in Superset:
+
+1. **Superset runs**: `git worktree add <path> -b <branch>`
+2. **Git creates**:
+   - A new directory at `<path>`
+   - A new branch `<branch>` (or checks out existing)
+   - Metadata in `.git/worktrees/<name>`
+3. **Superset configures**:
+   - Terminal sessions in the worktree directory
+   - Port allocation for isolation
+   - Setup scripts execution
+
+```bash
+# Internally, Superset runs something like:
+git worktree add ~/.superset/worktrees/my-app/add-oauth -b agent/add-oauth
+```
+
+### Workspace Deletion
+
+When you delete a workspace:
+
+1. **Terminal sessions** are gracefully terminated
+2. **Teardown scripts** run (if configured)
+3. **Git worktree is removed**: `git worktree remove <path> --force`
+4. **Metadata is cleaned up** from `.git/worktrees/`
+
+<Warning>
+  Worktree deletion is permanent. Any uncommitted changes in the worktree will be lost.
+</Warning>
+
+## Worktree Isolation Benefits
+
+<CardGroup cols={2}>
+  <Card title="File Isolation" icon="file">
+    Each worktree has its own files on disk. Agents can edit, create, and delete files without affecting other worktrees.
+  </Card>
+  
+  <Card title="Branch Isolation" icon="code-branch">
+    Each worktree checks out a different branch. Commits in one worktree never interfere with commits in another.
+  </Card>
+  
+  <Card title="Dependency Isolation" icon="box">
+    Install different package versions in each worktree. Run `npm install` or `bun install` independently.
+  </Card>
+  
+  <Card title="Process Isolation" icon="microchip">
+    Start dev servers, build processes, or test runners in each worktree. Different ports, different processes.
+  </Card>
+</CardGroup>
+
+### What's NOT Isolated
+
+Some things are shared across all worktrees:
+
+- **Git history**: All worktrees see the same commits and branches
+- **Remote tracking**: Fetches and pushes affect all worktrees
+- **Git configuration**: Settings in `.git/config` apply everywhere
+- **Hooks**: Pre-commit, post-merge hooks run in all worktrees
+
+## Branching Strategy
+
+Superset uses a simple, effective branching strategy:
+
+### Default Branch Naming
+
+By default, workspace branches are named:
+
+```
+agent/<workspace-name>
+```
+
+Examples:
+- `agent/add-oauth`
+- `agent/fix-memory-leak`
+- `agent/refactor-api-v3`
+
+<Tip>
+  You can customize the branch prefix in **Settings** → **Workspace Defaults** → **Branch Prefix**.
+</Tip>
+
+### Custom Branch Prefixes
+
+Configure custom prefixes per project or globally:
+
+- `feature/` - For new features
+- `fix/` - For bug fixes
+- `refactor/` - For refactoring tasks
+- `experiment/` - For experimental branches
+- Custom prefix of your choice
+
+### Base Branch Selection
+
+When creating a workspace, choose which branch to base it on:
+
+- **main** / **master** - Default for most projects
+- **develop** - If using git-flow
+- **staging** - For staging environment changes
+- Any existing branch in your repository
+
+The workspace will branch off from your selected base:
+
+```bash
+git checkout main
+git worktree add ~/.superset/worktrees/my-app/add-oauth -b agent/add-oauth
+# New branch agent/add-oauth starts from main
+```
+
+## Cleaning Up Worktrees
+
+### Automatic Cleanup
+
+Superset handles most cleanup automatically:
+
+1. **On workspace delete**: Worktree is removed and metadata cleaned
+2. **On app close**: Terminal sessions are gracefully terminated
+3. **On project close**: All worktrees remain on disk for later use
+
+### Manual Cleanup
+
+If Superset crashes or worktrees become orphaned:
+
+```bash
+# List all worktrees
+git worktree list
+
+# Remove a specific worktree
+git worktree remove ~/.superset/worktrees/my-app/old-workspace --force
+
+# Prune stale worktree metadata
+git worktree prune
+```
+
+<Accordion title="What if I deleted a worktree manually?">
+  If you manually delete a worktree directory without using `git worktree remove`, git doesn't immediately know. The metadata in `.git/worktrees/` persists.
+  
+  Run `git worktree prune` to clean up stale metadata:
+  
+  ```bash
+  # Clean up metadata for deleted worktrees
+  git worktree prune
+  ```
+  
+  This is safe to run and only removes metadata for worktrees that no longer exist on disk.
+</Accordion>
+
+### Importing Existing Worktrees
+
+If you have worktrees created outside Superset:
+
+1. Open the **New Workspace** dialog (`⌘N`)
+2. Click the **Import** tab
+3. Superset scans `.git/worktrees/` for existing worktrees
+4. Click **Import all** or select individual worktrees
+
+Superset will create workspace entries for these worktrees without re-creating them on disk.
+
+## Worktree Location Configuration
+
+By default, Superset creates worktrees in:
+
+```
+~/.superset/worktrees/<project-name>/<workspace-name>
+```
+
+You can customize this location:
+
+### Per-Project Location
+
+1. Open **Project Settings** (gear icon in sidebar)
+2. Set **Worktree Base Directory**
+3. New workspaces will be created in the custom location
+
+### Global Default Location
+
+1. Open **Settings** → **Workspace Defaults**  
+2. Set **Default Worktree Directory**
+3. Applies to all new projects
+
+<Note>
+  Changing the worktree location only affects **new workspaces**. Existing workspaces remain in their current location.
+</Note>
+
+## Advanced Worktree Operations
+
+### Locking Worktrees
+
+Git allows locking worktrees to prevent accidental removal:
+
+```bash
+# Lock a worktree (useful for worktrees on external drives)
+git worktree lock ~/.superset/worktrees/my-app/important-feature --reason "on external drive"
+
+# Unlock when ready
+git worktree unlock ~/.superset/worktrees/my-app/important-feature
+```
+
+Superset respects locked worktrees and won't delete them.
+
+### Worktree Aliases
+
+Speed up worktree management with shell aliases:
+
+```bash
+# ~/.bashrc or ~/.zshrc
+
+# List worktrees
+alias wtl="git worktree list"
+
+# Add worktree with branch
+wta() {
+  local branch="$1"
+  local worktree_path="~/.superset/worktrees/$(basename "$PWD")/$branch"
+  git worktree add "$worktree_path" -b "$branch"
+}
+
+# Remove worktree
+wtr() {
+  git worktree remove "$1" --force
+}
+```
+
+### Worktree Health Check
+
+Periodically verify worktree integrity:
+
+```bash
+# Check for orphaned worktrees
+git worktree list
+
+# Prune stale metadata
+git worktree prune
+
+# Verify .git/worktrees/ matches disk
+ls .git/worktrees/
+```
+
+## Worktree Performance Characteristics
+
+### Creation Speed
+
+| Operation | Time (typical) |
+|-----------|----------------|
+| Create worktree | 1-3 seconds |
+| Clone repository | 10-60 seconds |
+
+Worktrees are **10-20x faster** than cloning because they don't duplicate the git object store.
+
+### Disk Usage
+
+| Item | Size |
+|------|------|
+| Main repository | Full size |
+| Additional worktree | Only working files (~50-80% of main) |
+| Worktree metadata | ~1-5 MB |
+
+Worktrees use **50-80% less disk space** than full clones because they share the object store.
+
+<Info>
+  For a 500 MB repository, each worktree adds approximately 250-400 MB of working files, but 0 MB of git history.
+</Info>
+
+## Git Version Requirements
+
+Superset requires **Git 2.20+** for full worktree support.
+
+Check your git version:
+
+```bash
+git --version
+```
+
+If you're on an older version, upgrade:
+
+```bash
+# macOS (Homebrew)
+brew upgrade git
+
+# Ubuntu/Debian
+sudo apt update && sudo apt upgrade git
+
+# Windows (Git for Windows)
+# Download latest installer from git-scm.com
+```
+
+## Common Pitfalls and Solutions
+
+<Accordion title="Worktree already exists error">
+  **Error**: `fatal: 'path' already exists`
+  
+  **Cause**: A worktree already exists at that path
+  
+  **Solution**:
+  ```bash
+  # Remove the existing worktree first
+  git worktree remove path --force
+  
+  # Then create a new one
+  git worktree add path -b branch-name
+  ```
+</Accordion>
+
+<Accordion title="Branch checked out in another worktree">
+  **Error**: `fatal: 'branch' is already checked out`
+  
+  **Cause**: Git prevents the same branch from being checked out in multiple worktrees
+  
+  **Solution**: Each worktree must use a different branch. Create a new branch or switch to a different one.
+</Accordion>
+
+<Accordion title="Worktree metadata inconsistent">
+  **Error**: Worktree shows in `git worktree list` but doesn't exist on disk
+  
+  **Cause**: Worktree was deleted manually instead of via `git worktree remove`
+  
+  **Solution**:
+  ```bash
+  # Clean up stale metadata
+  git worktree prune
+  ```
+</Accordion>
+
+<Accordion title="Hooks not running in worktree">
+  **Cause**: Hooks are shared across all worktrees by default
+  
+  **Solution**: Hooks run in all worktrees. If you need worktree-specific hooks, use environment variables to detect which worktree is active:
+  
+  ```bash
+  # In a git hook
+  if [[ "$PWD" == *"worktrees/feature-a"* ]]; then
+    # Worktree-specific logic
+  fi
+  ```
+</Accordion>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="One Task Per Worktree" icon="list-check">
+    Keep worktrees focused. Create a new worktree for each discrete task or feature.
+  </Card>
+  
+  <Card title="Clean Up Merged Worktrees" icon="broom">
+    Delete worktrees after merging their branches. Reduces clutter and disk usage.
+  </Card>
+  
+  <Card title="Use Descriptive Paths" icon="folder-open">
+    Name worktree directories after the task, not just the branch. Makes navigation easier.
+  </Card>
+  
+  <Card title="Prune Regularly" icon="scissors">
+    Run `git worktree prune` periodically to clean up stale metadata.
+  </Card>
+</CardGroup>
+
+## Further Reading
+
+- [Git Worktree Documentation](https://git-scm.com/docs/git-worktree)
+- [Superset GitHub Repository](https://github.com/superset-sh/superset)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Workspaces" icon="window" href="/concepts/workspaces">
+    Learn how Superset manages worktrees as workspaces
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/concepts/configuration">
+    Configure setup scripts for worktree initialization
+  </Card>
+  
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    Run coding agents in isolated worktrees
+  </Card>
+  
+  <Card title="Presets" icon="rocket" href="/concepts/presets">
+    Automate workspace creation with presets
+  </Card>
+</CardGroup>

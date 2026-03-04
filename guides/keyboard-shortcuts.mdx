@@ -1,0 +1,252 @@
+---
+title: Keyboard Shortcuts
+description: Complete reference for all keyboard shortcuts in Superset
+---
+
+<Note>
+All shortcuts are customizable via **Settings > Keyboard Shortcuts** (`⌘/`).
+</Note>
+
+## Workspace Navigation
+
+Quickly switch between workspaces and projects.
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘1-9` | Switch to workspace 1-9 |
+| `⌘⌥↑` | Previous workspace |
+| `⌘⌥↓` | Next workspace |
+| `⌘N` | New workspace |
+| `⌘⇧N` | Quick create workspace (default settings) |
+| `⌘⇧O` | Open project |
+
+<Tip>
+Workspace numbers are shown in the sidebar. Press `⌘B` to toggle the sidebar if it's hidden.
+</Tip>
+
+## Terminal
+
+Manage terminal tabs, splits, and sessions.
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘T` | New terminal tab |
+| `⌘W` | Close current pane/terminal |
+| `⌘D` | Split terminal right |
+| `⌘⇧D` | Split terminal down |
+| `⌘K` | Clear terminal |
+| `⌘F` | Find in terminal |
+| `⌘⌥←` | Previous terminal tab |
+| `⌘⌥→` | Next terminal tab |
+| `Ctrl+1-9` | Run preset 1-9 |
+
+<Info>
+Standard terminal shortcuts like `Ctrl+C`, `Ctrl+D`, and `Ctrl+Z` work as expected.
+</Info>
+
+## Layout
+
+Control the visibility of UI panels and elements.
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘B` | Toggle workspaces sidebar |
+| `⌘L` | Toggle changes panel |
+| `⌘O` | Open workspace in external app |
+| `⌘⇧C` | Copy workspace path to clipboard |
+
+## Settings
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘/` | Open Settings > Keyboard Shortcuts |
+| `⌘,` | Open general settings |
+
+## General
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘Q` | Quit Superset |
+| `⌘M` | Minimize window |
+| `⌘H` | Hide window |
+| `⌘⌥I` | Open DevTools (debug mode) |
+
+## Terminal Presets
+
+Presets allow you to bind custom commands to `Ctrl+1` through `Ctrl+9`. Configure them in **Settings > Terminal Presets**.
+
+### Example Preset Configurations
+
+<CodeGroup>
+```json Development
+{
+  "presets": [
+    {
+      "key": "Ctrl+1",
+      "name": "Run Tests",
+      "command": "bun test"
+    },
+    {
+      "key": "Ctrl+2",
+      "name": "Start Dev Server",
+      "command": "bun run dev"
+    },
+    {
+      "key": "Ctrl+3",
+      "name": "Format Code",
+      "command": "bun run format"
+    }
+  ]
+}
+```
+
+```json AI Agents
+{
+  "presets": [
+    {
+      "key": "Ctrl+1",
+      "name": "OpenCode - Fix Errors",
+      "command": "opencode 'Fix all TypeScript errors'"
+    },
+    {
+      "key": "Ctrl+2",
+      "name": "OpenCode - Add Tests",
+      "command": "opencode 'Add unit tests for new features'"
+    },
+    {
+      "key": "Ctrl+3",
+      "name": "OpenCode - Refactor",
+      "command": "opencode 'Refactor code for better readability'"
+    }
+  ]
+}
+```
+</CodeGroup>
+
+## Customizing Shortcuts
+
+<Steps>
+  <Step title="Open Keyboard Shortcuts">
+    Press `⌘/` or go to **Settings > Keyboard Shortcuts**.
+  </Step>
+
+  <Step title="Find the Action">
+    Search or browse for the action you want to customize.
+  </Step>
+
+  <Step title="Record New Shortcut">
+    Click on the current shortcut and press your desired key combination.
+  </Step>
+
+  <Step title="Save Changes">
+    Click **Save** to apply your changes.
+  </Step>
+</Steps>
+
+<Warning>
+Avoid conflicts with system shortcuts. macOS reserves many combinations like `⌘Tab`, `⌘Space`, etc.
+</Warning>
+
+## Keyboard Shortcut Principles
+
+Superset's shortcuts follow these principles:
+
+<Card title="Modifier Consistency" icon="keyboard">
+  - `⌘` for primary actions (New, Open, Close)
+  - `⌘⇧` for variations (Quick New, Advanced Open)
+  - `⌘⌥` for navigation (Previous/Next)
+  - `Ctrl` for presets and terminal-specific actions
+</Card>
+
+<Card title="Familiar Patterns" icon="star">
+  Common shortcuts match standard macOS conventions:
+  - `⌘N` = New
+  - `⌘O` = Open
+  - `⌘W` = Close
+  - `⌘Q` = Quit
+</Card>
+
+<Card title="Conflict Avoidance" icon="shield">
+  Superset avoids shortcuts that conflict with:
+  - System shortcuts
+  - Terminal emulator shortcuts
+  - Common text editing shortcuts
+</Card>
+
+## Terminal-Specific Shortcuts
+
+These shortcuts work within the terminal and follow standard terminal conventions:
+
+| Shortcut | Action |
+|:---------|:-------|
+| `Ctrl+C` | Interrupt current process |
+| `Ctrl+D` | Send EOF / exit shell |
+| `Ctrl+Z` | Suspend current process |
+| `Ctrl+L` | Clear screen (alternative to `⌘K`) |
+| `Ctrl+A` | Move cursor to start of line |
+| `Ctrl+E` | Move cursor to end of line |
+| `Ctrl+U` | Delete from cursor to start of line |
+| `Ctrl+K` | Delete from cursor to end of line |
+| `Ctrl+W` | Delete word before cursor |
+| `Ctrl+R` | Reverse search command history |
+| `↑/↓` | Navigate command history |
+| `Tab` | Autocomplete |
+
+## Split Pane Navigation
+
+When using split terminals (`⌘D` or `⌘⇧D`):
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘[` | Focus previous pane |
+| `⌘]` | Focus next pane |
+| `⌘⌥←` | Resize pane left |
+| `⌘⌥→` | Resize pane right |
+| `⌘⌥↑` | Resize pane up |
+| `⌘⌥↓` | Resize pane down |
+| `⌘W` | Close focused pane |
+
+## Quick Reference Card
+
+Print this for your desk:
+
+```
+╔══════════════════════════════════════════════════╗
+║            SUPERSET QUICK REFERENCE              ║
+╠══════════════════════════════════════════════════╣
+║ WORKSPACES                                       ║
+║  ⌘1-9        Switch to workspace 1-9            ║
+║  ⌘N          New workspace                       ║
+║  ⌘⇧N         Quick create workspace             ║
+║  ⌘B          Toggle sidebar                      ║
+║  ⌘L          Toggle changes panel                ║
+╠══════════════════════════════════════════════════╣
+║ TERMINALS                                        ║
+║  ⌘T          New tab                             ║
+║  ⌘D          Split right                         ║
+║  ⌘⇧D         Split down                          ║
+║  ⌘W          Close pane                          ║
+║  ⌘K          Clear terminal                      ║
+║  ⌘⌥←/→       Previous/next tab                   ║
+║  Ctrl+1-9    Run preset                          ║
+╠══════════════════════════════════════════════════╣
+║ USEFUL                                           ║
+║  ⌘O          Open in editor                      ║
+║  ⌘⇧C         Copy workspace path                 ║
+║  ⌘/          Keyboard shortcuts settings         ║
+╚══════════════════════════════════════════════════╝
+```
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Workspace Management" icon="folder" href="/guides/workspace-management">
+    Learn how workspaces work in Superset
+  </Card>
+  <Card title="Running Agents" icon="robot" href="/guides/running-agents">
+    Terminal workflows for coding agents
+  </Card>
+  <Card title="Terminal Presets" icon="bolt" href="/guides/running-agents#using-presets">
+    Configure custom Ctrl+1-9 commands
+  </Card>
+</CardGroup>

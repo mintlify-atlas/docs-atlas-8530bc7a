@@ -1,0 +1,525 @@
+---
+title: Setup & Teardown Scripts
+description: Automate workspace initialization and cleanup with custom scripts
+---
+
+Superset can automatically run setup and teardown scripts when creating and deleting workspaces. This is essential for:
+- Installing dependencies
+- Copying environment files
+- Creating database branches
+- Starting Docker containers
+- Cleaning up resources
+
+## Configuration File
+
+Setup and teardown scripts are configured in `.superset/config.json` at the root of your repository:
+
+```json .superset/config.json
+{
+  "setup": ["./.superset/setup.sh"],
+  "teardown": ["./.superset/teardown.sh"]
+}
+```
+
+<Info>
+Both `setup` and `teardown` accept arrays of commands. You can run multiple scripts or inline commands.
+</Info>
+
+## Setup Scripts
+
+Setup scripts run when a new workspace is created. They prepare the workspace environment.
+
+### Basic Setup Script
+
+```bash .superset/setup.sh
+#!/bin/bash
+set -e
+
+# Copy environment variables from root
+cp ../.env .env
+
+# Install dependencies
+echo "📦 Installing dependencies..."
+bun install
+
+# Run database migrations
+echo "🗄️  Running migrations..."
+bun run db:migrate
+
+echo "✅ Workspace ready!"
+```
+
+<Tip>
+Make your script executable: `chmod +x .superset/setup.sh`
+</Tip>
+
+### Advanced Setup Script
+
+Here's a more comprehensive example from the Superset repository:
+
+```bash .superset/setup.sh (Advanced)
+#!/usr/bin/env bash
+set -uo pipefail
+
+SUPERSET_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source helper libraries
+source "$SUPERSET_SCRIPT_DIR/lib/common.sh"
+source "$SUPERSET_SCRIPT_DIR/lib/setup/steps.sh"
+source "$SUPERSET_SCRIPT_DIR/lib/setup/main.sh"
+
+setup_main "$@"
+```
+
+This script:
+1. Loads environment variables from the root repository
+2. Checks for required dependencies (bun, neonctl, jq, docker, caddy)
+3. Installs npm/bun dependencies
+4. Creates a Neon database branch for the workspace
+5. Starts an Electric SQL Docker container
+6. Allocates unique ports for all services
+7. Writes a workspace-specific `.env` file
+8. Sets up local MCP server configuration
+9. Seeds authentication tokens and local database
+
+## Teardown Scripts
+
+Teardown scripts run when a workspace is deleted. They clean up resources.
+
+### Basic Teardown Script
+
+```bash .superset/teardown.sh
+#!/bin/bash
+set -e
+
+# Stop Docker containers
+echo "🛑 Stopping Docker containers..."
+docker stop "${WORKSPACE_NAME}-db" 2>/dev/null || true
+docker rm "${WORKSPACE_NAME}-db" 2>/dev/null || true
+
+# Delete database branch
+if [ -n "$NEON_BRANCH_ID" ]; then
+  echo "🗄️  Deleting Neon branch..."
+  neonctl branches delete "$NEON_BRANCH_ID" --project-id "$NEON_PROJECT_ID"
+fi
+
+echo "✅ Cleanup complete!"
+```
+
+### Advanced Teardown Script
+
+From the Superset repository:
+
+```bash .superset/teardown.sh (Advanced)
+#!/usr/bin/env bash
+set -uo pipefail
+
+SUPERSET_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source "$SUPERSET_SCRIPT_DIR/lib/common.sh"
+source "$SUPERSET_SCRIPT_DIR/lib/teardown/steps.sh"
+source "$SUPERSET_SCRIPT_DIR/lib/teardown/main.sh"
+
+teardown_main "$@"
+```
+
+This script:
+1. Stops and removes Electric SQL Docker container
+2. Deletes the Neon database branch
+3. Releases allocated ports
+4. Removes workspace-specific configuration files
+
+## Environment Variables
+
+Superset provides these environment variables to setup/teardown scripts:
+
+| Variable | Description |
+|:---------|:------------|
+| `SUPERSET_WORKSPACE_NAME` | Name of the workspace (e.g., `fix-auth-bug`) |
+| `SUPERSET_ROOT_PATH` | Absolute path to the main repository |
+| `SUPERSET_PORT_BASE` | Base port allocated for this workspace (e.g., `3000`) |
+| `PWD` | Current workspace directory path |
+
+### Using Environment Variables
+
+```bash
+#!/bin/bash
+set -e
+
+echo "Setting up workspace: $SUPERSET_WORKSPACE_NAME"
+echo "Root path: $SUPERSET_ROOT_PATH"
+
+# Copy .env from root
+cp "$SUPERSET_ROOT_PATH/.env" .env
+
+# Customize for this workspace
+echo "WORKSPACE_NAME=$SUPERSET_WORKSPACE_NAME" >> .env
+echo "API_PORT=$((SUPERSET_PORT_BASE + 1))" >> .env
+echo "WEB_PORT=$((SUPERSET_PORT_BASE + 2))" >> .env
+```
+
+## Common Setup Tasks
+
+### Installing Dependencies
+
+<CodeGroup>
+```bash Bun
+bun install
+```
+
+```bash npm
+npm install
+```
+
+```bash pnpm
+pnpm install
+```
+
+```bash Yarn
+yarn install
+```
+</CodeGroup>
+
+### Copying Environment Files
+
+```bash
+# Copy from root repository
+cp "$SUPERSET_ROOT_PATH/.env" .env
+
+# Or copy from a template
+cp .env.example .env
+
+# Customize for this workspace
+echo "DATABASE_URL=postgres://localhost:5432/$SUPERSET_WORKSPACE_NAME" >> .env
+```
+
+### Creating Database Branches
+
+<CodeGroup>
+```bash Neon
+# Create a branch for this workspace
+BRANCH_NAME="$SUPERSET_WORKSPACE_NAME"
+neonctl branches create \
+  --project-id "$NEON_PROJECT_ID" \
+  --name "$BRANCH_NAME"
+
+# Get connection string
+DATABASE_URL=$(neonctl connection-string "$BRANCH_NAME" \
+  --project-id "$NEON_PROJECT_ID" \
+  --pooled)
+
+echo "DATABASE_URL=$DATABASE_URL" >> .env
+```
+
+```bash PlanetScale
+# Create a branch
+pscale branch create my-database "$SUPERSET_WORKSPACE_NAME"
+
+# Wait for branch to be ready
+pscale branch wait my-database "$SUPERSET_WORKSPACE_NAME"
+
+# Get connection string
+DATABASE_URL=$(pscale connect my-database "$SUPERSET_WORKSPACE_NAME" --format json | jq -r .url)
+echo "DATABASE_URL=$DATABASE_URL" >> .env
+```
+</CodeGroup>
+
+### Starting Docker Containers
+
+```bash
+# Start a PostgreSQL container
+CONTAINER_NAME="${SUPERSET_WORKSPACE_NAME}-db"
+docker run -d \
+  --name "$CONTAINER_NAME" \
+  -e POSTGRES_PASSWORD=dev \
+  -p 5432:5432 \
+  postgres:16
+
+# Wait for PostgreSQL to be ready
+until docker exec "$CONTAINER_NAME" pg_isready; do
+  sleep 1
+done
+
+echo "DATABASE_URL=postgres://postgres:dev@localhost:5432/postgres" >> .env
+```
+
+### Allocating Unique Ports
+
+```bash
+# Allocate base port (increases by 20 for each workspace)
+BASE_PORT=$((3000 + (WORKSPACE_NUMBER * 20)))
+
+# Calculate service ports
+WEB_PORT=$((BASE_PORT + 0))
+API_PORT=$((BASE_PORT + 1))
+DB_PORT=$((BASE_PORT + 2))
+
+# Write to .env
+cat >> .env <<EOF
+WEB_PORT=$WEB_PORT
+API_PORT=$API_PORT
+DB_PORT=$DB_PORT
+EOF
+```
+
+## Common Teardown Tasks
+
+### Stopping Docker Containers
+
+```bash
+CONTAINER_NAME="${SUPERSET_WORKSPACE_NAME}-db"
+
+# Stop and remove container
+docker stop "$CONTAINER_NAME" 2>/dev/null || true
+docker rm "$CONTAINER_NAME" 2>/dev/null || true
+```
+
+### Deleting Database Branches
+
+<CodeGroup>
+```bash Neon
+if [ -n "$NEON_BRANCH_ID" ]; then
+  neonctl branches delete "$NEON_BRANCH_ID" \
+    --project-id "$NEON_PROJECT_ID"
+fi
+```
+
+```bash PlanetScale
+pscale branch delete my-database "$SUPERSET_WORKSPACE_NAME" --force
+```
+</CodeGroup>
+
+### Cleaning Up Files
+
+```bash
+# Remove workspace-specific files
+rm -rf .env
+rm -rf node_modules
+rm -rf .next
+rm -rf dist
+```
+
+## Testing Scripts
+
+Test your setup script before committing:
+
+<Steps>
+  <Step title="Create a Test Workspace">
+    Use `⌘N` to create a new workspace. Watch the setup script output in the terminal.
+  </Step>
+
+  <Step title="Verify Environment">
+    Check that all dependencies installed correctly:
+    ```bash
+    cat .env
+    bun --version
+    docker ps
+    ```
+  </Step>
+
+  <Step title="Test Application">
+    Try running your application:
+    ```bash
+    bun run dev
+    ```
+  </Step>
+
+  <Step title="Test Teardown">
+    Delete the workspace and verify cleanup worked:
+    - Docker containers stopped
+    - Database branches deleted
+    - Files cleaned up
+  </Step>
+</Steps>
+
+## Error Handling
+
+Make your scripts robust with proper error handling:
+
+```bash
+#!/bin/bash
+
+# Exit on any error
+set -e
+
+# Exit on undefined variables
+set -u
+
+# Print commands as they execute (debugging)
+set -x
+
+# Trap errors and clean up
+trap 'echo "❌ Setup failed at line $LINENO"' ERR
+
+# Your setup commands here
+echo "📦 Installing dependencies..."
+bun install || {
+  echo "❌ Failed to install dependencies"
+  exit 1
+}
+
+echo "✅ Setup complete!"
+```
+
+## Best Practices
+
+<Card title="Make Scripts Idempotent" icon="rotate">
+  Scripts should work correctly when run multiple times. Check if resources already exist before creating them.
+</Card>
+
+<Card title="Use Exit Codes" icon="circle-check">
+  Return `0` for success, non-zero for failure. Superset will show an error if setup fails.
+</Card>
+
+<Card title="Provide Clear Output" icon="message">
+  Use `echo` to show progress. Helps debug issues when scripts fail.
+</Card>
+
+<Card title="Clean Up on Failure" icon="broom">
+  Use `trap` to clean up resources if setup fails halfway through.
+</Card>
+
+<Card title="Test Thoroughly" icon="vial">
+  Test both setup and teardown scripts before deploying to your team.
+</Card>
+
+<Card title="Document Dependencies" icon="book">
+  Add comments listing required CLI tools (bun, docker, neonctl, etc.).
+</Card>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Setup script fails silently">
+    If the script fails without showing errors:
+    1. Add `set -e` to exit on any error
+    2. Add `set -x` to print commands as they execute
+    3. Check the terminal output in Superset
+    4. Test the script manually: `./.superset/setup.sh`
+  </Accordion>
+
+  <Accordion title="Environment variables not available">
+    If `SUPERSET_WORKSPACE_NAME` or `SUPERSET_ROOT_PATH` are empty:
+    1. Make sure you're running the script through Superset, not manually
+    2. Check that the script is configured in `.superset/config.json`
+    3. Verify the config file is in the repository root
+  </Accordion>
+
+  <Accordion title="Dependencies not found">
+    If commands like `bun` or `docker` aren't found:
+    1. Make sure they're installed on your system
+    2. Check that they're in your PATH
+    3. Try running the command manually first
+    4. Add the full path to the binary (e.g., `/usr/local/bin/docker`)
+  </Accordion>
+
+  <Accordion title="Teardown leaves resources behind">
+    If Docker containers or database branches aren't cleaned up:
+    1. Add error suppression: `command 2>/dev/null || true`
+    2. Check resource names match what setup created
+    3. Manually clean up: `docker ps -a`, `neonctl branches list`
+    4. Test teardown script manually before deleting workspace
+  </Accordion>
+</AccordionGroup>
+
+## Example: Full Setup Script
+
+Here's a complete, production-ready setup script:
+
+```bash .superset/setup.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+error() { echo -e "${RED}✗${NC} $1" >&2; }
+success() { echo -e "${GREEN}✓${NC} $1"; }
+info() { echo -e "${YELLOW}→${NC} $1"; }
+
+info "Setting up workspace: $SUPERSET_WORKSPACE_NAME"
+
+# 1. Copy environment file
+info "Copying environment file..."
+if [ ! -f "$SUPERSET_ROOT_PATH/.env" ]; then
+  error "Root .env not found at $SUPERSET_ROOT_PATH/.env"
+  exit 1
+fi
+cp "$SUPERSET_ROOT_PATH/.env" .env
+success "Environment file copied"
+
+# 2. Install dependencies
+info "Installing dependencies..."
+if ! command -v bun &> /dev/null; then
+  error "Bun not found. Install from https://bun.sh"
+  exit 1
+fi
+bun install
+success "Dependencies installed"
+
+# 3. Set up database
+info "Creating database branch..."
+if ! command -v neonctl &> /dev/null; then
+  error "neonctl not found. Install: npm install -g neonctl"
+  exit 1
+fi
+
+BRANCH_ID=$(neonctl branches create \
+  --project-id "$NEON_PROJECT_ID" \
+  --name "$SUPERSET_WORKSPACE_NAME" \
+  --output json | jq -r '.branch.id')
+
+DATABASE_URL=$(neonctl connection-string "$BRANCH_ID" \
+  --project-id "$NEON_PROJECT_ID" \
+  --pooled)
+
+echo "DATABASE_URL=$DATABASE_URL" >> .env
+echo "NEON_BRANCH_ID=$BRANCH_ID" >> .env
+success "Database branch created"
+
+# 4. Run migrations
+info "Running database migrations..."
+bun run db:migrate
+success "Migrations complete"
+
+# 5. Start Docker containers
+info "Starting Docker containers..."
+if ! command -v docker &> /dev/null; then
+  error "Docker not found. Install from https://docker.com"
+  exit 1
+fi
+
+CONTAINER_NAME="superset-redis-$SUPERSET_WORKSPACE_NAME"
+if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+  info "Container already exists, restarting..."
+  docker restart "$CONTAINER_NAME"
+else
+  docker run -d \
+    --name "$CONTAINER_NAME" \
+    -p 6379:6379 \
+    redis:7-alpine
+fi
+
+echo "REDIS_URL=redis://localhost:6379" >> .env
+success "Redis container started"
+
+success "Workspace setup complete!"
+info "Start development: bun run dev"
+```
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Workspace Management" icon="folder" href="/guides/workspace-management">
+    Learn how workspaces are created and deleted
+  </Card>
+  <Card title="Running Agents" icon="robot" href="/guides/running-agents">
+    Prepare environments for coding agents
+  </Card>
+  <Card title="Integrations" icon="plug" href="/guides/integrations">
+    Connect to external services and tools
+  </Card>
+</CardGroup>

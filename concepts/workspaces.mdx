@@ -1,0 +1,214 @@
+---
+title: Workspaces
+description: Isolated environments for running coding agents and managing tasks
+---
+
+## What are Workspaces?
+
+Workspaces are isolated task environments in Superset. Each workspace represents one branch and provides a dedicated space where you can run coding agents, edit code, and manage tasks without affecting your main working directory or other workspaces.
+
+<Info>
+  **Key Concept**: Each workspace = one git branch. Workspaces are backed by git worktrees, giving each branch its own directory, terminal sessions, and port allocations.
+</Info>
+
+## How Workspaces Use Git Worktrees
+
+Superset leverages [git worktrees](https://git-scm.com/docs/git-worktree) to provide true filesystem isolation between workspaces. When you create a workspace:
+
+1. **Superset creates a new git worktree** in your configured worktree directory (default: `~/.superset/worktrees/`)
+2. **A new branch is created** for the workspace (or an existing branch is checked out)
+3. **The workspace gets its own working directory** with a full checkout of your repository
+4. **All workspaces share the same git object store** — commits, trees, and blobs exist exactly once
+
+```bash
+~/my-project/                          # Your main repository
+~/.superset/worktrees/my-project/
+  ├── add-auth-feature/                # Workspace 1
+  │   ├── .git                         # Points back to main repo
+  │   └── (full project files)
+  ├── fix-bug-123/                     # Workspace 2
+  └── refactor-api/                    # Workspace 3
+```
+
+<Note>
+  Creating a worktree is fast (seconds) and cheap (megabytes) because you're not cloning the repository — you're just checking out another copy of the files.
+</Note>
+
+## Workspace Lifecycle
+
+### Creating a Workspace
+
+There are multiple ways to create a workspace:
+
+**1. Quick Create with Preset (`⌘⇧N`)**
+
+Launches a workspace pre-configured with your [preset](/concepts/presets) commands.
+
+**2. New Workspace (`⌘N`)**
+
+Opens a dialog where you can:
+- Name your workspace
+- Choose a base branch
+- Select a branch prefix (optional)
+- Import an existing worktree from disk
+
+**3. Import Existing Worktrees**
+
+If you have existing git worktrees on disk, use the **Import** tab in the New Workspace modal to bring them into Superset.
+
+### Using a Workspace
+
+Once created, a workspace contains:
+
+- **Terminal tabs**: Run commands, start dev servers, or launch coding agents
+- **File viewer**: Review diffs and edit code
+- **Browser panes**: Test your application in isolation
+- **Port allocation**: Each workspace gets a dedicated range of 10 ports to avoid conflicts
+
+<Tip>
+  Setup scripts defined in `.superset/config.json` run automatically when creating a workspace. Use these to copy `.env` files, install dependencies, or start services.
+</Tip>
+
+### Switching Between Workspaces
+
+Superset provides multiple ways to navigate between workspaces:
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘1-9` | Switch to workspace 1-9 |
+| `⌘⌥↑` | Previous workspace |
+| `⌘⌥↓` | Next workspace |
+| `⌘B` | Toggle workspace sidebar |
+
+**Click any workspace** in the sidebar to switch to it. The active workspace is highlighted.
+
+### Deleting a Workspace
+
+Right-click a workspace in the sidebar and select **Delete**. This:
+
+1. Closes all terminal sessions
+2. Runs teardown scripts (if configured)
+3. Removes the git worktree from disk
+4. Cleans up workspace metadata
+
+<Warning>
+  Deleting a workspace is permanent. Make sure you've merged or pushed any important changes before deleting.
+</Warning>
+
+## Workspace Metadata and State
+
+Each workspace tracks:
+
+- **Name**: Display name (editable)
+- **Branch**: Git branch name
+- **Base branch**: The branch this workspace was created from
+- **Created date**: When the workspace was created
+- **Last opened date**: When you last switched to this workspace
+- **Unread status**: Whether the workspace has notifications requiring attention
+- **Port base**: Starting port number for this workspace's 10-port range
+
+### Database Schema
+
+Workspaces are stored in the local SQLite database with the following structure:
+
+```typescript
+{
+  id: string;                    // UUID
+  projectId: string;             // Parent project reference
+  worktreeId: string;            // Associated worktree ID
+  type: "worktree" | "branch";   // Workspace type
+  branch: string;                // Git branch name
+  name: string;                  // Display name
+  tabOrder: number;              // Position in sidebar
+  createdAt: number;             // Unix timestamp
+  updatedAt: number;             // Unix timestamp
+  lastOpenedAt: number;          // Unix timestamp
+  isUnread: boolean;             // Has unread notifications
+  isUnnamed: boolean;            // Should prompt for rename
+  deletingAt: number | null;     // Deletion in progress
+  portBase: number | null;       // Port allocation base
+}
+```
+
+## Workspace Sidebar Navigation
+
+The workspace sidebar shows all workspaces for the current project:
+
+- **Name and branch**: Display name and git branch
+- **Unread indicator**: Orange dot when agents need attention
+- **Right-click menu**: Quick actions (rename, delete, open in editor)
+- **Drag to reorder**: Change workspace order in the sidebar
+
+<Info>
+  Use `⌘B` to toggle the sidebar visibility and maximize your workspace area.
+</Info>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="One Task Per Workspace" icon="target">
+    Keep workspaces focused on a single task or feature. This makes it easier to review changes and manage concurrent work.
+  </Card>
+  
+  <Card title="Use Descriptive Names" icon="tag">
+    Name workspaces after the task or feature, not just the branch name. Good: "Add OAuth Integration". Bad: "agent/task-123".
+  </Card>
+  
+  <Card title="Clean Up Regularly" icon="trash">
+    Delete workspaces after merging their changes. Keeping too many workspaces can clutter your sidebar and consume disk space.
+  </Card>
+  
+  <Card title="Leverage Setup Scripts" icon="wrench">
+    Configure setup scripts to automate environment preparation. Copy `.env` files, install dependencies, or seed test data.
+  </Card>
+</CardGroup>
+
+## Workspace Types
+
+Superset supports two workspace types:
+
+### Worktree Workspaces
+
+**Type**: `worktree`
+
+Each worktree workspace has its own isolated directory via git worktrees. Multiple worktree workspaces can exist per project, allowing you to work on different branches simultaneously.
+
+**When to use**:
+- Running multiple coding agents in parallel
+- Working on several features at once
+- Testing changes without affecting your main working directory
+
+### Branch Workspaces
+
+**Type**: `branch`
+
+A single workspace that always reflects the current branch of your main repository. Only one branch workspace can exist per project.
+
+**When to use**:
+- Quick experiments on your main working directory
+- Single-threaded development workflow
+- Projects where worktree isolation isn't needed
+
+<Note>
+  Most users will use **worktree workspaces** for the full benefits of Superset's parallel development capabilities.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    Learn how to run coding agents in workspaces
+  </Card>
+  
+  <Card title="Worktrees" icon="code-branch" href="/concepts/worktrees">
+    Deep dive into git worktree mechanics
+  </Card>
+  
+  <Card title="Presets" icon="rocket" href="/concepts/presets">
+    Configure workspace templates for quick creation
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/concepts/configuration">
+    Set up automated workspace scripts
+  </Card>
+</CardGroup>

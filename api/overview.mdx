@@ -1,0 +1,265 @@
+---
+title: "API Overview"
+description: "Complete API reference for Superset's Electron desktop application"
+---
+
+## Introduction
+
+Superset provides a comprehensive set of APIs for interacting with the desktop application, managing workspaces, controlling terminals, and integrating with external services through MCP servers.
+
+## Architecture
+
+Superset's API architecture is built on three core layers:
+
+### 1. Electron IPC + tRPC
+
+The desktop application uses **tRPC over Electron IPC** for type-safe communication between the main process and renderer process:
+
+- **Main Process**: Handles system operations, file access, git operations, terminal management
+- **Renderer Process**: UI components that consume APIs via tRPC React hooks
+- **Transport**: `trpc-electron` package for IPC communication
+- **Type Safety**: Full TypeScript types shared between client and server
+
+```typescript
+// Renderer process (React components)
+import { trpc } from '@/lib/trpc';
+
+const workspaces = trpc.workspaces.getAll.useQuery();
+```
+
+### 2. Cloud tRPC API
+
+Separate tRPC routers for cloud services (authentication, analytics, integrations):
+
+- User management
+- Organization/team management
+- Cloud sync and backups
+- Third-party integrations (GitHub, Linear, Slack)
+
+### 3. MCP (Model Context Protocol) Servers
+
+Extensible server architecture for AI agent capabilities:
+
+- **Desktop MCP Server**: Browser automation, DOM inspection, UI testing
+- **Superset MCP Server**: Workspace management, device control, task orchestration
+- Custom MCP servers via plugin system
+
+## Available APIs
+
+<CardGroup cols={2}>
+  <Card title="Desktop API" icon="desktop" href="/api/desktop-api">
+    Electron IPC APIs for workspace management, file operations, git, and terminals
+  </Card>
+  
+  <Card title="tRPC Endpoints" icon="server" href="/api/trpc-endpoints">
+    Cloud tRPC procedures for authentication, analytics, and integrations
+  </Card>
+  
+  <Card title="MCP Servers" icon="plug" href="/api/mcp-servers">
+    Model Context Protocol servers for AI agent capabilities
+  </Card>
+</CardGroup>
+
+## Authentication
+
+### Desktop API
+
+No authentication required - the desktop API runs in the trusted Electron main process.
+
+### Cloud tRPC API
+
+Authentication uses **session-based auth** with the following procedures:
+
+- **Protected procedures**: Require valid session (`protectedProcedure`)
+- **Admin procedures**: Require admin email domain (`adminProcedure`)
+- **Public procedures**: No authentication required (`publicProcedure`)
+
+```typescript
+// Example: Protected procedure in packages/trpc/src/trpc.ts
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.session) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Not authenticated. Please sign in.",
+    });
+  }
+  return next({ ctx: { session: ctx.session } });
+});
+```
+
+### MCP Server Authentication
+
+MCP servers use the context pattern for authentication:
+
+```typescript
+// packages/mcp/src/auth.ts pattern
+const ctx = getMcpContext(extra);
+if (!ctx.userId) {
+  throw new Error("Authentication required");
+}
+```
+
+## Getting Started
+
+### Using Desktop APIs
+
+1. **In Renderer Process** (React components):
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+function WorkspaceList() {
+  const { data: workspaces } = trpc.workspaces.getAll.useQuery();
+  
+  return (
+    <ul>
+      {workspaces?.map(ws => <li key={ws.id}>{ws.name}</li>)}
+    </ul>
+  );
+}
+```
+
+2. **Subscribe to Real-time Updates** (using observables):
+
+```typescript
+const { data } = trpc.terminal.subscribe.useSubscription(
+  { paneId: 'pane-1' },
+  {
+    onData: (event) => {
+      console.log('Terminal event:', event);
+    }
+  }
+);
+```
+
+### Using Cloud tRPC API
+
+```typescript
+// apps/web/src/trpc/react.tsx
+import { api } from '@/trpc/react';
+
+function UserProfile() {
+  const { data: user } = api.user.get.useQuery();
+  return <div>{user?.name}</div>;
+}
+```
+
+### Using MCP Servers
+
+MCP servers are typically consumed by AI agents via the MCP protocol:
+
+```json
+// .mcp.json configuration
+{
+  "mcpServers": {
+    "desktop-automation": {
+      "command": "npx",
+      "args": ["-y", "@superset/desktop-mcp"]
+    },
+    "superset": {
+      "command": "npx",
+      "args": ["-y", "@superset/mcp"],
+      "env": {
+        "SUPERSET_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+## Error Handling
+
+### tRPC Errors
+
+```typescript
+try {
+  await trpc.workspaces.create.mutate({ name: 'my-workspace' });
+} catch (error) {
+  if (error instanceof TRPCError) {
+    console.error(error.code, error.message);
+  }
+}
+```
+
+### Error Codes
+
+- `UNAUTHORIZED`: Authentication required
+- `FORBIDDEN`: Insufficient permissions
+- `BAD_REQUEST`: Invalid input
+- `NOT_FOUND`: Resource not found
+- `INTERNAL_SERVER_ERROR`: Server error
+
+## Observable Subscriptions (trpc-electron)
+
+<Warning>
+**Important**: The desktop app uses `trpc-electron` which **only supports observables** for subscriptions, not async generators.
+</Warning>
+
+```typescript
+// CORRECT: Observable pattern (apps/desktop/src/lib/trpc/)
+import { observable } from "@trpc/server/observable";
+
+export const createMyRouter = () => {
+  return router({
+    subscribe: publicProcedure.subscription(() => {
+      return observable<MyEvent>((emit) => {
+        const handler = (data) => {
+          emit.next({ type: "my-event", data });
+        };
+        
+        myEmitter.on("my-event", handler);
+        
+        return () => {
+          myEmitter.off("my-event", handler);
+        };
+      });
+    }),
+  });
+};
+
+// WRONG: Async generators don't work with trpc-electron
+export const badRouter = router({
+  subscribe: publicProcedure.subscription(async function* () {
+    // This will NOT work with Electron IPC
+    while (true) {
+      yield await getNextEvent();
+    }
+  }),
+});
+```
+
+## Type Safety
+
+All APIs are fully typed with TypeScript:
+
+```typescript
+// Desktop API types
+import type { AppRouter } from '@/lib/trpc/routers';
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
+
+type RouterInputs = inferRouterInputs<AppRouter>;
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+// Cloud API types
+import type { AppRouter as CloudRouter } from '@superset/trpc';
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Desktop API Reference" href="/api/desktop-api">
+    Explore workspace, terminal, and file system APIs
+  </Card>
+  
+  <Card title="tRPC Endpoints" href="/api/trpc-endpoints">
+    Browse cloud API procedures
+  </Card>
+  
+  <Card title="MCP Servers" href="/api/mcp-servers">
+    Build custom MCP servers for agents
+  </Card>
+  
+  <Card title="Contributing" href="/resources/contributing">
+    Contribute to the Superset project
+  </Card>
+</CardGroup>

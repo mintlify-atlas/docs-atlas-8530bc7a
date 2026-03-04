@@ -1,0 +1,300 @@
+---
+title: Running Agents
+description: Master running multiple coding agents in parallel with Superset's terminal interface
+---
+
+Superset is built for running multiple coding agents simultaneously. Each workspace provides a full-featured terminal environment where you can run any CLI-based agent.
+
+## Supported Agents
+
+<Info>
+Superset works with **any CLI-based coding agent**. If it runs in a terminal, it runs in Superset.
+</Info>
+
+### Popular Agents
+
+| Agent | Command Example |
+|:------|:----------------|
+| Claude Code | `claude-code` |
+| OpenCode | `opencode` |
+| Cursor Agent | `cursor-agent` |
+| GitHub Copilot | `gh copilot` |
+| Gemini CLI | `gemini` |
+| Codex CLI | `codex` |
+
+## Starting an Agent
+
+<Steps>
+  <Step title="Create or Switch to Workspace">
+    Use `⌘N` to create a new workspace or `⌘1-9` to switch to an existing one.
+  </Step>
+
+  <Step title="Open a Terminal">
+    Press `⌘T` to open a new terminal tab if needed.
+  </Step>
+
+  <Step title="Run Your Agent">
+    Type your agent's command and press Enter:
+    ```bash
+    opencode "Implement user authentication"
+    ```
+  </Step>
+
+  <Step title="Monitor Progress">
+    Watch the terminal output as the agent works. Superset preserves all output history so you can scroll back anytime.
+  </Step>
+</Steps>
+
+## Terminal Management
+
+### Creating Terminals
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘T` | New terminal tab |
+| `⌘D` | Split terminal right |
+| `⌘⇧D` | Split terminal down |
+
+<Tip>
+Use splits to monitor multiple agents side-by-side. For example, run a build watcher in one pane and an agent in another.
+</Tip>
+
+### Navigating Terminals
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘⌥←` | Previous tab |
+| `⌘⌥→` | Next tab |
+| `⌘W` | Close current pane/terminal |
+
+### Terminal Utilities
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘K` | Clear terminal |
+| `⌘F` | Find in terminal |
+
+<Note>
+All standard terminal features work: copy/paste, scrollback, ANSI colors, cursor positioning, etc.
+</Note>
+
+## Using Presets
+
+Presets allow you to quickly launch common agent commands with a single keystroke.
+
+### Creating Presets
+
+<Steps>
+  <Step title="Open Preset Settings">
+    Go to **Settings > Terminal Presets** or press `⌘/`.
+  </Step>
+
+  <Step title="Add a Preset">
+    Click **Add Preset** and configure:
+    - **Name**: Display name (e.g., "Fix Bugs")
+    - **Command**: Shell command to run (e.g., `opencode "Fix all TypeScript errors"`)
+    - **Shortcut**: `Ctrl+1` through `Ctrl+9`
+  </Step>
+
+  <Step title="Save and Test">
+    Save the preset and press the shortcut to test it.
+  </Step>
+</Steps>
+
+### Using Presets
+
+Press `Ctrl+1` through `Ctrl+9` to instantly run your configured presets in the current terminal.
+
+<Tip>
+Common preset ideas:
+- `Ctrl+1`: Run tests
+- `Ctrl+2`: Start dev server
+- `Ctrl+3`: Fix linting errors
+- `Ctrl+4`: Update dependencies
+</Tip>
+
+## Running Multiple Agents in Parallel
+
+Superset's key strength is running multiple agents simultaneously without context switching.
+
+### Parallel Workflow
+
+<Steps>
+  <Step title="Create Multiple Workspaces">
+    Press `⌘⇧N` multiple times to quickly create workspaces for different tasks:
+    - `fix-auth-bug`
+    - `add-dark-mode`
+    - `update-dependencies`
+  </Step>
+
+  <Step title="Start Agents in Each Workspace">
+    Switch between workspaces with `⌘1-9` and start an agent in each:
+    ```bash
+    # Workspace 1
+    opencode "Fix authentication redirect bug"
+    
+    # Workspace 2
+    opencode "Implement dark mode toggle"
+    
+    # Workspace 3
+    opencode "Update all dependencies to latest"
+    ```
+  </Step>
+
+  <Step title="Monitor All Agents">
+    The workspace sidebar shows which agents are:
+    - **Active** (running)
+    - **Waiting** (needs input)
+    - **Done** (completed)
+  </Step>
+
+  <Step title="Review Changes as They Complete">
+    When an agent finishes, press `⌘L` to open the changes panel and review diffs.
+  </Step>
+</Steps>
+
+<Warning>
+Be mindful of system resources. Running 10+ agents simultaneously can be CPU/memory intensive depending on your machine and the agents you're using.
+</Warning>
+
+## Monitoring Agent Progress
+
+Superset provides visual indicators for workspace state:
+
+### Status Indicators
+
+| Indicator | Meaning |
+|:----------|:--------|
+| 🟢 Green dot | Agent actively running |
+| 🟡 Yellow dot | Agent waiting for input |
+| ⚪ Gray dot | Workspace idle |
+| 📝 Changes badge | Uncommitted changes present |
+
+### Changes Panel
+
+Press `⌘L` to open the changes panel, which shows:
+- **Modified files**: Files changed by the agent
+- **Staged changes**: Changes ready to commit
+- **Diff viewer**: Inline diffs for all changes
+
+<Tip>
+You can stage, unstage, and commit changes directly from the changes panel without leaving Superset.
+</Tip>
+
+## Reviewing and Approving Changes
+
+<Steps>
+  <Step title="Wait for Agent to Complete">
+    Watch the terminal output. Most agents will indicate when they're done.
+  </Step>
+
+  <Step title="Open Changes Panel">
+    Press `⌘L` to view all changes made by the agent.
+  </Step>
+
+  <Step title="Review Each File">
+    Click files in the changes panel to view diffs. Look for:
+    - Correct implementation
+    - No unintended changes
+    - Proper code style
+    - No security issues
+  </Step>
+
+  <Step title="Test Changes">
+    Run tests or manually test the changes:
+    ```bash
+    bun test
+    bun run dev
+    ```
+  </Step>
+
+  <Step title="Commit or Request Changes">
+    If satisfied, commit the changes:
+    ```bash
+    git add .
+    git commit -m "Implement feature X"
+    ```
+    
+    Or ask the agent to make corrections:
+    ```bash
+    opencode "Fix the validation logic in auth.ts"
+    ```
+  </Step>
+</Steps>
+
+## Best Practices
+
+<Card title="One Task Per Workspace" icon="bullseye">
+  Keep each workspace focused on a single task. This makes it easier to review changes and prevents agents from interfering with each other.
+</Card>
+
+<Card title="Clear Task Instructions" icon="message">
+  Give agents specific, clear instructions. Instead of "fix bugs", say "fix the authentication redirect loop when logging out".
+</Card>
+
+<Card title="Monitor Resource Usage" icon="gauge">
+  Keep an eye on CPU and memory usage. If your system slows down, consider running fewer agents in parallel.
+</Card>
+
+<Card title="Review Before Committing" icon="eye">
+  Always review agent-generated code before committing. Agents can make mistakes or misunderstand requirements.
+</Card>
+
+<Card title="Use Presets for Common Tasks" icon="bolt">
+  Set up presets for frequently-run commands. This saves time and reduces typing errors.
+</Card>
+
+<Card title="Split Terminals for Monitoring" icon="columns">
+  Use `⌘D` and `⌘⇧D` to split terminals. Run agents in one pane while monitoring logs or tests in another.
+</Card>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Agent is stuck/unresponsive">
+    If an agent appears frozen:
+    1. Press `Ctrl+C` to interrupt the process
+    2. Check if the agent is waiting for input
+    3. Look for error messages in the terminal
+    4. Try running the agent with verbose logging
+  </Accordion>
+
+  <Accordion title="Agent produced wrong output">
+    If the agent misunderstood your instructions:
+    1. Review the changes with `⌘L`
+    2. Revert unwanted changes with `git checkout -- <file>`
+    3. Give more specific instructions
+    4. Break the task into smaller steps
+  </Accordion>
+
+  <Accordion title="Terminal output is garbled">
+    If terminal output looks corrupted:
+    1. Press `⌘K` to clear the terminal
+    2. Type `reset` and press Enter
+    3. Restart the agent
+  </Accordion>
+
+  <Accordion title="Can't see agent output">
+    If the agent is running but you don't see output:
+    1. Make sure you're in the correct terminal tab
+    2. Scroll to the bottom of the terminal
+    3. Check if the agent is running in the background
+  </Accordion>
+</AccordionGroup>
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Workspace Management" icon="folder" href="/guides/workspace-management">
+    Learn how to organize multiple workspaces
+  </Card>
+  <Card title="Keyboard Shortcuts" icon="keyboard" href="/guides/keyboard-shortcuts">
+    Master all terminal shortcuts
+  </Card>
+  <Card title="Setup Scripts" icon="file-code" href="/guides/setup-teardown-scripts">
+    Automate environment setup for agents
+  </Card>
+  <Card title="MCP Servers" icon="server" href="/guides/mcp-servers">
+    Give agents access to external tools via MCP
+  </Card>
+</CardGroup>

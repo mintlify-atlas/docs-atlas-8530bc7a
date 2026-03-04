@@ -1,0 +1,572 @@
+---
+title: "Desktop API"
+description: "Electron IPC APIs for workspace management, terminals, file operations, and git"
+---
+
+## Overview
+
+The Desktop API provides type-safe Electron IPC communication via tRPC for managing workspaces, terminals, file systems, and git operations.
+
+**Location**: `apps/desktop/src/lib/trpc/routers/`
+
+## Router Structure
+
+The desktop app router is created in `apps/desktop/src/lib/trpc/routers/index.ts:29`:
+
+```typescript
+export const createAppRouter = (getWindow: () => BrowserWindow | null) => {
+  return router({
+    workspaces: createWorkspacesRouter(),
+    terminal: createTerminalRouter(),
+    filesystem: createFilesystemRouter(),
+    changes: createChangesRouter(),
+    projects: createProjectsRouter(getWindow),
+    auth: createAuthRouter(),
+    browser: createBrowserRouter(),
+    // ... more routers
+  });
+};
+
+export type AppRouter = ReturnType<typeof createAppRouter>;
+```
+
+## Workspaces API
+
+Manage git worktrees and workspace lifecycle.
+
+**Source**: `apps/desktop/src/lib/trpc/routers/workspaces/`
+
+### Procedures
+
+#### `workspaces.getAll`
+
+<ParamField query="none" type="void">
+  Returns all workspaces
+</ParamField>
+
+<ResponseField name="workspaces" type="Workspace[]">
+  Array of workspace objects
+  
+  <Expandable title="Workspace properties">
+    <ResponseField name="id" type="string" required>
+      Workspace UUID
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Workspace name
+    </ResponseField>
+    <ResponseField name="type" type="'worktree' | 'main'" required>
+      Workspace type
+    </ResponseField>
+    <ResponseField name="path" type="string">
+      File system path to workspace
+    </ResponseField>
+    <ResponseField name="branchName" type="string">
+      Git branch name
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example**:
+
+```typescript
+const { data: workspaces } = trpc.workspaces.getAll.useQuery();
+```
+
+#### `workspaces.create`
+
+<ParamField body="name" type="string" required>
+  Workspace name
+</ParamField>
+
+<ParamField body="projectId" type="string" required>
+  Project UUID
+</ParamField>
+
+<ParamField body="branchName" type="string">
+  Branch name (auto-generated if not provided)
+</ParamField>
+
+<ParamField body="baseBranch" type="string" default="main">
+  Branch to create from
+</ParamField>
+
+**Returns**: Created workspace object
+
+**Example**:
+
+```typescript
+const createWorkspace = trpc.workspaces.create.useMutation();
+
+await createWorkspace.mutateAsync({
+  name: 'feature-auth',
+  projectId: 'proj-123',
+  branchName: 'feature/auth',
+  baseBranch: 'main'
+});
+```
+
+#### `workspaces.delete`
+
+<ParamField body="id" type="string" required>
+  Workspace UUID
+</ParamField>
+
+**Example**:
+
+```typescript
+await trpc.workspaces.delete.mutate({ id: 'ws-123' });
+```
+
+#### `workspaces.refreshGitStatus`
+
+<ParamField body="id" type="string" required>
+  Workspace UUID
+</ParamField>
+
+**Returns**: Git status information (branch, ahead/behind commits, dirty status)
+
+---
+
+## Terminal API
+
+Manage terminal sessions with daemon-backed runtime.
+
+**Source**: `apps/desktop/src/lib/trpc/routers/terminal/terminal.ts:48`
+
+### Environment Variables
+
+Terminal sessions receive these environment variables:
+
+- `PATH`: Prepends `~/.superset/bin` for agent command wrappers
+- `SUPERSET_PANE_ID`: Pane identifier
+- `SUPERSET_TAB_ID`: Tab identifier
+- `SUPERSET_WORKSPACE_ID`: Workspace UUID
+- `SUPERSET_WORKSPACE_NAME`: Workspace name
+- `SUPERSET_WORKSPACE_PATH`: Worktree path
+- `SUPERSET_ROOT_PATH`: Main repo path
+- `SUPERSET_PORT`: Hooks server port
+
+### Procedures
+
+#### `terminal.createOrAttach`
+
+<ParamField body="paneId" type="string" required>
+  Pane identifier (safe ID, no slashes)
+</ParamField>
+
+<ParamField body="tabId" type="string" required>
+  Tab identifier
+</ParamField>
+
+<ParamField body="workspaceId" type="string" required>
+  Workspace UUID
+</ParamField>
+
+<ParamField body="cols" type="number">
+  Terminal columns
+</ParamField>
+
+<ParamField body="rows" type="number">
+  Terminal rows
+</ParamField>
+
+<ParamField body="cwd" type="string">
+  Working directory override
+</ParamField>
+
+<ParamField body="themeType" type="'dark' | 'light'">
+  Terminal theme
+</ParamField>
+
+**Returns**: `{ sessionKey: string }`
+
+**Example**:
+
+```typescript
+const { mutate: createTerminal } = trpc.terminal.createOrAttach.useMutation();
+
+const { sessionKey } = await createTerminal({
+  paneId: 'pane-1',
+  tabId: 'tab-1',
+  workspaceId: 'ws-123',
+  cols: 80,
+  rows: 24,
+  themeType: 'dark'
+});
+```
+
+#### `terminal.write`
+
+<ParamField body="paneId" type="string" required>
+  Pane identifier
+</ParamField>
+
+<ParamField body="data" type="string" required>
+  Data to write to terminal
+</ParamField>
+
+**Example**:
+
+```typescript
+await trpc.terminal.write.mutate({
+  paneId: 'pane-1',
+  data: 'npm install\n'
+});
+```
+
+#### `terminal.resize`
+
+<ParamField body="paneId" type="string" required>
+  Pane identifier
+</ParamField>
+
+<ParamField body="cols" type="number" required>
+  New column count
+</ParamField>
+
+<ParamField body="rows" type="number" required>
+  New row count
+</ParamField>
+
+#### `terminal.subscribe`
+
+<Warning>
+Uses **observable pattern** (required by trpc-electron for Electron IPC subscriptions).
+</Warning>
+
+<ParamField query="paneId" type="string" required>
+  Pane identifier
+</ParamField>
+
+**Returns**: Observable stream of terminal events
+
+**Example**:
+
+```typescript
+const { data } = trpc.terminal.subscribe.useSubscription(
+  { paneId: 'pane-1' },
+  {
+    onData: (event) => {
+      if (event.type === 'data') {
+        console.log(event.data);
+      }
+    }
+  }
+);
+```
+
+---
+
+## File System API
+
+File operations with search capabilities.
+
+**Source**: `apps/desktop/src/lib/trpc/routers/filesystem/index.ts:582`
+
+### Procedures
+
+#### `filesystem.readDirectory`
+
+<ParamField query="dirPath" type="string" required>
+  Directory path to read
+</ParamField>
+
+<ParamField query="rootPath" type="string" required>
+  Workspace root path
+</ParamField>
+
+<ParamField query="includeHidden" type="boolean" default={false}>
+  Include hidden files (starting with `.`)
+</ParamField>
+
+<ResponseField name="entries" type="DirectoryEntry[]">
+  <Expandable title="DirectoryEntry">
+    <ResponseField name="id" type="string">
+      Relative path
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      File/directory name
+    </ResponseField>
+    <ResponseField name="path" type="string">
+      Absolute path
+    </ResponseField>
+    <ResponseField name="relativePath" type="string">
+      Path relative to rootPath
+    </ResponseField>
+    <ResponseField name="isDirectory" type="boolean">
+      Whether entry is a directory
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example**:
+
+```typescript
+const { data: entries } = trpc.filesystem.readDirectory.useQuery({
+  dirPath: '/home/user/project',
+  rootPath: '/home/user/project',
+  includeHidden: false
+});
+```
+
+#### `filesystem.searchFiles`
+
+Fuzzy search for files by name.
+
+<ParamField query="rootPath" type="string" required>
+  Search root directory
+</ParamField>
+
+<ParamField query="query" type="string" required>
+  Search query
+</ParamField>
+
+<ParamField query="includePattern" type="string">
+  Glob pattern to include (e.g., `"*.ts,*.tsx"`)
+</ParamField>
+
+<ParamField query="excludePattern" type="string">
+  Glob pattern to exclude (e.g., `"node_modules,dist"`)
+</ParamField>
+
+<ParamField query="limit" type="number" default={200}>
+  Maximum results (max 500)
+</ParamField>
+
+**Example**:
+
+```typescript
+const { data: files } = trpc.filesystem.searchFiles.useQuery({
+  rootPath: '/home/user/project',
+  query: 'auth',
+  includePattern: '*.ts,*.tsx',
+  excludePattern: 'node_modules',
+  limit: 50
+});
+```
+
+#### `filesystem.searchKeyword`
+
+Search file contents using ripgrep (falls back to scan if ripgrep unavailable).
+
+<ParamField query="rootPath" type="string" required>
+  Search root directory
+</ParamField>
+
+<ParamField query="query" type="string" required>
+  Search keyword
+</ParamField>
+
+<ParamField query="includePattern" type="string">
+  File patterns to include
+</ParamField>
+
+<ParamField query="excludePattern" type="string">
+  File patterns to exclude
+</ParamField>
+
+<ParamField query="includeHidden" type="boolean" default={false}>
+  Search hidden files
+</ParamField>
+
+<ParamField query="limit" type="number" default={200}>
+  Maximum matches
+</ParamField>
+
+<ResponseField name="matches" type="KeywordSearchMatch[]">
+  <Expandable title="KeywordSearchMatch">
+    <ResponseField name="relativePath" type="string">
+      File path
+    </ResponseField>
+    <ResponseField name="line" type="number">
+      Line number (1-indexed)
+    </ResponseField>
+    <ResponseField name="column" type="number">
+      Column number (1-indexed)
+    </ResponseField>
+    <ResponseField name="preview" type="string">
+      Preview of matching line
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example**:
+
+```typescript
+const { data: matches } = trpc.filesystem.searchKeyword.useQuery({
+  rootPath: '/home/user/project',
+  query: 'TODO',
+  includePattern: '*.ts',
+  limit: 100
+});
+```
+
+#### `filesystem.createFile`
+
+<ParamField body="dirPath" type="string" required>
+  Parent directory path
+</ParamField>
+
+<ParamField body="fileName" type="string" required>
+  File name
+</ParamField>
+
+<ParamField body="content" type="string" default="">
+  File content
+</ParamField>
+
+**Returns**: `{ path: string }`
+
+#### `filesystem.createDirectory`
+
+<ParamField body="parentPath" type="string" required>
+  Parent directory
+</ParamField>
+
+<ParamField body="dirName" type="string" required>
+  Directory name
+</ParamField>
+
+**Returns**: `{ path: string }`
+
+#### `filesystem.delete`
+
+<ParamField body="paths" type="string[]" required>
+  Paths to delete
+</ParamField>
+
+<ParamField body="permanent" type="boolean" default={false}>
+  Permanently delete (true) or move to trash (false)
+</ParamField>
+
+**Returns**:
+
+<ResponseField name="deleted" type="string[]">
+  Successfully deleted paths
+</ResponseField>
+
+<ResponseField name="errors" type="Array<{path: string, error: string}>">
+  Failed deletions
+</ResponseField>
+
+---
+
+## Git/Changes API
+
+Git operations and file staging.
+
+**Source**: `apps/desktop/src/lib/trpc/routers/changes/`
+
+### Procedures
+
+#### `changes.status`
+
+<ParamField query="workspaceId" type="string" required>
+  Workspace UUID
+</ParamField>
+
+**Returns**: Git status (staged, unstaged, untracked files)
+
+#### `changes.stage`
+
+<ParamField body="workspaceId" type="string" required>
+  Workspace UUID
+</ParamField>
+
+<ParamField body="files" type="string[]" required>
+  File paths to stage
+</ParamField>
+
+#### `changes.unstage`
+
+<ParamField body="workspaceId" type="string" required>
+  Workspace UUID
+</ParamField>
+
+<ParamField body="files" type="string[]" required>
+  File paths to unstage
+</ParamField>
+
+#### `changes.commit`
+
+<ParamField body="workspaceId" type="string" required>
+  Workspace UUID
+</ParamField>
+
+<ParamField body="message" type="string" required>
+  Commit message
+</ParamField>
+
+---
+
+## Usage Patterns
+
+### React Hooks
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+function MyComponent() {
+  // Query
+  const { data, isLoading, error } = trpc.workspaces.getAll.useQuery();
+  
+  // Mutation
+  const createMutation = trpc.workspaces.create.useMutation({
+    onSuccess: () => {
+      console.log('Workspace created!');
+    }
+  });
+  
+  // Subscription
+  const { data: terminalData } = trpc.terminal.subscribe.useSubscription(
+    { paneId: 'pane-1' },
+    { onData: (event) => console.log(event) }
+  );
+  
+  return <div>{/* ... */}</div>;
+}
+```
+
+### Error Handling
+
+```typescript
+try {
+  await trpc.filesystem.createFile.mutate({
+    dirPath: '/path',
+    fileName: 'test.txt'
+  });
+} catch (error) {
+  if (error instanceof TRPCError) {
+    switch (error.code) {
+      case 'BAD_REQUEST':
+        console.error('Invalid input');
+        break;
+      case 'INTERNAL_SERVER_ERROR':
+        console.error('Server error');
+        break;
+    }
+  }
+}
+```
+
+### TypeScript Types
+
+```typescript
+import type { AppRouter } from '@/lib/trpc/routers';
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
+
+type RouterInputs = inferRouterInputs<AppRouter>;
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+// Get input type for a specific procedure
+type CreateWorkspaceInput = RouterInputs['workspaces']['create'];
+
+// Get output type for a specific procedure
+type Workspace = RouterOutputs['workspaces']['get'];
+```
+
+## Next Steps
+
+<Card title="tRPC Endpoints" icon="server" href="/api/trpc-endpoints">
+  Explore cloud tRPC API procedures
+</Card>

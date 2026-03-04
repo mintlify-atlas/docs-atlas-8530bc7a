@@ -1,0 +1,685 @@
+---
+title: "MCP Servers API"
+description: "Build custom MCP servers for AI agent capabilities using the Model Context Protocol"
+---
+
+## Overview
+
+Superset uses the **Model Context Protocol (MCP)** to provide AI agents with tools and resources for interacting with the desktop app, managing workspaces, and automating workflows.
+
+**Packages**:
+- `packages/mcp` - Superset cloud MCP server (workspace/device management)
+- `packages/desktop-mcp` - Desktop automation MCP server (UI testing, browser control)
+
+## MCP Protocol Basics
+
+MCP servers expose **tools** and **resources** that AI agents can invoke:
+
+- **Tools**: Functions the agent can call (e.g., `create_workspace`, `click`, `navigate`)
+- **Resources**: Data the agent can read (e.g., workspace details, app context)
+- **Prompts**: Pre-configured prompts for common tasks
+
+### Server Initialization
+
+MCP servers are created using `@modelcontextprotocol/sdk`:
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+export function createMcpServer(): McpServer {
+  const server = new McpServer(
+    { name: "my-server", version: "1.0.0" },
+    { capabilities: { tools: {} } }
+  );
+  
+  registerTools(server);
+  
+  return server;
+}
+```
+
+### Tool Registration
+
+Tools are registered with Zod schemas for input validation:
+
+```typescript
+import { z } from "zod";
+
+server.registerTool(
+  "tool_name",
+  {
+    description: "What this tool does",
+    inputSchema: {
+      param1: z.string().describe("Description of param1"),
+      param2: z.number().optional().describe("Optional parameter"),
+    },
+  },
+  async (args, extra) => {
+    // Tool implementation
+    const result = await doSomething(args.param1, args.param2);
+    
+    return {
+      content: [
+        { type: "text", text: `Result: ${result}` }
+      ],
+    };
+  }
+);
+```
+
+---
+
+## Desktop MCP Server
+
+**Package**: `@superset/desktop-mcp`
+
+**Source**: `packages/desktop-mcp/src/mcp/mcp-server.ts:5`
+
+Provides browser automation and UI testing tools.
+
+### Server Setup
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ConnectionManager } from "./connection/index.js";
+import { registerTools } from "./tools/index.js";
+
+export function createMcpServer(): McpServer {
+  const server = new McpServer(
+    { name: "desktop-automation", version: "0.1.0" },
+    { capabilities: { tools: {} } }
+  );
+
+  const connection = new ConnectionManager();
+
+  registerTools({
+    server,
+    getPage: () => connection.getPage(),
+    consoleCapture: connection.consoleCapture,
+  });
+
+  return server;
+}
+```
+
+### Available Tools
+
+**Source**: `packages/desktop-mcp/src/mcp/tools/index.ts:20`
+
+All tools defined in `packages/desktop-mcp/src/mcp/tools/`:
+
+- `take_screenshot` - Capture app screenshots
+- `inspect_dom` - Inspect DOM elements
+- `click` - Click UI elements
+- `type_text` - Type text into inputs
+- `send_keys` - Send keyboard shortcuts
+- `get_console_logs` - Retrieve console logs
+- `evaluate_js` - Execute JavaScript in app
+- `navigate` - Navigate to URLs
+- `get_window_info` - Get window metadata
+
+### Tool Example: `click`
+
+**Source**: `packages/desktop-mcp/src/mcp/tools/click/click.ts:43`
+
+```typescript
+export function register({ server, getPage }: ToolContext) {
+  server.registerTool(
+    "click",
+    {
+      description: "Click on a UI element in the Electron app",
+      inputSchema: {
+        selector: z.string().optional().describe("CSS selector"),
+        text: z.string().optional().describe("Visible text content"),
+        testId: z.string().optional().describe("data-testid attribute"),
+        x: z.number().optional().describe("X coordinate"),
+        y: z.number().optional().describe("Y coordinate"),
+        index: z.number().int().min(0).default(0),
+        fuzzy: z.boolean().default(true),
+      },
+    },
+    async (args) => {
+      const page = await getPage();
+      
+      // Click by coordinates
+      if (args.x !== undefined && args.y !== undefined) {
+        await page.mouse.click(args.x, args.y);
+        return {
+          content: [{ type: "text", text: `Clicked at (${args.x}, ${args.y})` }],
+        };
+      }
+      
+      // Find element and click
+      const result = await page.evaluate(/* ... */);
+      await page.mouse.click(result.x, result.y);
+      
+      return {
+        content: [{ type: "text", text: `Clicked <${result.tag}>` }],
+      };
+    }
+  );
+}
+```
+
+### Usage Example
+
+Agents invoke desktop MCP tools via the protocol:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "click",
+    "arguments": {
+      "text": "Create Workspace",
+      "fuzzy": true
+    }
+  }
+}
+```
+
+---
+
+## Superset MCP Server
+
+**Package**: `@superset/mcp`
+
+**Source**: `packages/mcp/src/server.ts:4`
+
+Provides workspace, device, and task management tools.
+
+### Server Setup
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTools } from "./tools";
+
+export function createMcpServer(): McpServer {
+  const server = new McpServer(
+    { name: "superset", version: "1.0.0" },
+    { capabilities: { tools: {} } }
+  );
+  registerTools(server);
+  return server;
+}
+```
+
+### Available Tools
+
+**Source**: `packages/mcp/src/tools/index.ts:20`
+
+All tools organized by category:
+
+#### Device Tools
+
+- `list_devices` - List registered devices
+- `list_workspaces` - List workspaces on a device
+- `create_workspace` - Create new workspace(s)
+- `switch_workspace` - Switch active workspace
+- `delete_workspace` - Delete workspace
+- `update_workspace` - Update workspace config
+- `list_projects` - List projects
+- `get_app_context` - Get current app state
+- `get_workspace_details` - Get workspace metadata
+- `start_agent_session` - Start agent session on device
+
+#### Task Tools
+
+- `create_task` - Create task
+- `update_task` - Update task
+- `list_tasks` - List tasks
+- `get_task` - Get task details
+- `delete_task` - Delete task
+- `list_task_statuses` - List available statuses
+
+#### Organization Tools
+
+- `list_members` - List organization members
+
+### Tool Example: `create_workspace`
+
+**Source**: `packages/mcp/src/tools/devices/create-workspace/create-workspace.ts:20`
+
+```typescript
+const workspaceInputSchema = z.object({
+  name: z.string().optional().describe("Workspace name (auto-generated if not provided)"),
+  branchName: z.string().optional().describe("Branch name (auto-generated if not provided)"),
+  baseBranch: z.string().optional().describe("Branch to create from (defaults to main)"),
+});
+
+export function register(server: McpServer) {
+  server.registerTool(
+    "create_workspace",
+    {
+      description: "Create one or more workspaces (git worktrees) on a device",
+      inputSchema: {
+        deviceId: z.string().describe("Target device ID"),
+        projectId: z.string().describe("Project ID to create workspaces in"),
+        workspaces: z
+          .array(workspaceInputSchema)
+          .min(1)
+          .max(5)
+          .describe("Array of workspaces to create (1-5)"),
+      },
+    },
+    async (args, extra) => {
+      const ctx = getMcpContext(extra);
+      const deviceId = args.deviceId as string;
+      const projectId = args.projectId as string;
+      const workspaces = args.workspaces;
+
+      return executeOnDevice({
+        ctx,
+        deviceId,
+        tool: "create_workspace",
+        params: { projectId, workspaces },
+      });
+    }
+  );
+}
+```
+
+### Authentication Context
+
+MCP tools use a context pattern for authentication:
+
+```typescript
+import { getMcpContext } from "../../utils";
+
+async (args, extra) => {
+  const ctx = getMcpContext(extra);
+  
+  if (!ctx.userId) {
+    return {
+      content: [{ type: "text", text: "Authentication required" }],
+      isError: true,
+    };
+  }
+  
+  // Use ctx.userId, ctx.organizationId, etc.
+}
+```
+
+---
+
+## Building Custom MCP Servers
+
+### 1. Create Server Structure
+
+```bash
+mkdir -p my-mcp-server/src/tools
+cd my-mcp-server
+bun init
+```
+
+**package.json**:
+
+```json
+{
+  "name": "my-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "my-mcp-server": "./dist/bin.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8"
+  }
+}
+```
+
+### 2. Define Tools
+
+**src/tools/my-tool.ts**:
+
+```typescript
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+
+export function register(server: McpServer) {
+  server.registerTool(
+    "my_tool",
+    {
+      description: "Does something useful",
+      inputSchema: {
+        input: z.string().describe("Input parameter"),
+      },
+    },
+    async (args) => {
+      const result = await processInput(args.input as string);
+      
+      return {
+        content: [
+          { type: "text", text: `Result: ${result}` }
+        ],
+      };
+    }
+  );
+}
+
+async function processInput(input: string): Promise<string> {
+  // Your logic here
+  return `Processed: ${input}`;
+}
+```
+
+### 3. Register Tools
+
+**src/tools/index.ts**:
+
+```typescript
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { register as myTool } from "./my-tool";
+import { register as anotherTool } from "./another-tool";
+
+const allTools = [myTool, anotherTool];
+
+export function registerTools(server: McpServer) {
+  for (const register of allTools) {
+    register(server);
+  }
+}
+```
+
+### 4. Create Server
+
+**src/server.ts**:
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerTools } from "./tools/index.js";
+
+export function createMcpServer(): McpServer {
+  const server = new McpServer(
+    { name: "my-mcp-server", version: "1.0.0" },
+    { capabilities: { tools: {} } }
+  );
+  
+  registerTools(server);
+  
+  return server;
+}
+```
+
+### 5. Create CLI Entry Point
+
+**src/bin.ts**:
+
+```typescript
+#!/usr/bin/env node
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createMcpServer } from "./server.js";
+
+const server = createMcpServer();
+const transport = new StdioServerTransport();
+
+await server.connect(transport);
+```
+
+### 6. Build and Test
+
+```bash
+bun build src/bin.ts --outdir dist --target node
+chmod +x dist/bin.js
+```
+
+**Test with MCP Inspector**:
+
+```bash
+npx @modelcontextprotocol/inspector dist/bin.js
+```
+
+---
+
+## MCP Server Configuration
+
+Add your MCP server to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "my-mcp-server": {
+      "command": "node",
+      "args": ["/path/to/my-mcp-server/dist/bin.js"],
+      "env": {
+        "API_KEY": "your-api-key",
+        "LOG_LEVEL": "debug"
+      }
+    }
+  }
+}
+```
+
+**For published packages**:
+
+```json
+{
+  "mcpServers": {
+    "my-mcp-server": {
+      "command": "npx",
+      "args": ["-y", "my-mcp-server@latest"]
+    }
+  }
+}
+```
+
+---
+
+## Server Lifecycle
+
+### Initialization
+
+1. Server process starts via stdio transport
+2. MCP SDK establishes connection
+3. Tools are registered
+4. Server sends `initialized` notification
+
+### Tool Invocation
+
+1. Client sends `tools/call` request
+2. Server validates input with Zod schema
+3. Tool handler executes
+4. Server returns result or error
+
+### Shutdown
+
+1. Client closes connection
+2. Server cleanup handlers run
+3. Process exits
+
+---
+
+## Testing MCP Servers
+
+### Unit Testing Tools
+
+```typescript
+import { describe, test, expect } from "bun:test";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { register } from "./my-tool";
+
+describe("my_tool", () => {
+  test("processes input correctly", async () => {
+    const server = new McpServer(
+      { name: "test", version: "1.0.0" },
+      { capabilities: { tools: {} } }
+    );
+    
+    register(server);
+    
+    const result = await server.callTool("my_tool", {
+      input: "test input"
+    });
+    
+    expect(result.content[0].text).toContain("Processed: test input");
+  });
+});
+```
+
+### Integration Testing
+
+Use `@modelcontextprotocol/inspector` for manual testing:
+
+```bash
+npx @modelcontextprotocol/inspector ./dist/bin.js
+```
+
+This opens a UI for invoking tools and inspecting responses.
+
+---
+
+## Error Handling
+
+### Return Errors from Tools
+
+```typescript
+server.registerTool(
+  "my_tool",
+  { /* ... */ },
+  async (args) => {
+    if (!validateInput(args.input)) {
+      return {
+        content: [
+          { type: "text", text: "Invalid input: must be non-empty" }
+        ],
+        isError: true,
+      };
+    }
+    
+    // Normal execution
+    return {
+      content: [{ type: "text", text: "Success" }],
+    };
+  }
+);
+```
+
+### Throw Errors for Server Issues
+
+```typescript
+server.registerTool(
+  "my_tool",
+  { /* ... */ },
+  async (args) => {
+    try {
+      const result = await dangerousOperation();
+      return { content: [{ type: "text", text: result }] };
+    } catch (error) {
+      // Let MCP SDK handle the error
+      throw new Error(`Operation failed: ${error.message}`);
+    }
+  }
+);
+```
+
+---
+
+## Best Practices
+
+### 1. Tool Naming
+
+- Use `snake_case` for tool names
+- Be descriptive: `create_workspace` not `create`
+- Prefix with category: `github_create_issue`
+
+### 2. Input Validation
+
+- Always use Zod schemas
+- Provide clear descriptions for each parameter
+- Set reasonable defaults
+- Mark optional parameters explicitly
+
+### 3. Error Messages
+
+- Return user-friendly error messages
+- Include context: what failed and why
+- Suggest fixes when possible
+
+### 4. Tool Descriptions
+
+- Start with action verb: "Create", "List", "Update"
+- Explain what the tool does in plain language
+- Include use cases in description
+
+### 5. Response Format
+
+- Always return `{ content: [...] }`
+- Use `type: "text"` for messages
+- Set `isError: true` for user-facing errors
+
+---
+
+## Example: Full Custom MCP Server
+
+**src/server.ts**:
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+
+export function createMcpServer(): McpServer {
+  const server = new McpServer(
+    { name: "example-server", version: "1.0.0" },
+    { capabilities: { tools: {} } }
+  );
+
+  // Register a simple tool
+  server.registerTool(
+    "greet",
+    {
+      description: "Greet a user by name",
+      inputSchema: {
+        name: z.string().describe("User's name"),
+        formal: z.boolean().default(false).describe("Use formal greeting"),
+      },
+    },
+    async (args) => {
+      const greeting = args.formal
+        ? `Good day, ${args.name}`
+        : `Hey ${args.name}!`;
+      
+      return {
+        content: [{ type: "text", text: greeting }],
+      };
+    }
+  );
+
+  return server;
+}
+```
+
+**src/bin.ts**:
+
+```typescript
+#!/usr/bin/env node
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createMcpServer } from "./server.js";
+
+const server = createMcpServer();
+const transport = new StdioServerTransport();
+
+await server.connect(transport);
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Desktop API" icon="desktop" href="/api/desktop-api">
+    Electron IPC APIs for local operations
+  </Card>
+  
+  <Card title="tRPC Endpoints" icon="server" href="/api/trpc-endpoints">
+    Cloud tRPC API reference
+  </Card>
+  
+  <Card title="MCP SDK Docs" icon="book" href="https://modelcontextprotocol.io">
+    Official MCP documentation
+  </Card>
+  
+  <Card title="Example MCP Servers" icon="code" href="https://github.com/modelcontextprotocol/servers">
+    Reference implementations
+  </Card>
+</CardGroup>

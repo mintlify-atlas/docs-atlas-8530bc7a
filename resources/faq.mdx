@@ -1,0 +1,219 @@
+---
+title: Frequently Asked Questions
+description: Common questions about Superset
+---
+
+## General
+
+<Accordion title="What is Superset?">
+Superset is a turbocharged terminal that allows you to run multiple CLI coding agents simultaneously. It provides workspace isolation using git worktrees, built-in diff viewing, agent monitoring, and tools to 10x your development workflow.
+</Accordion>
+
+<Accordion title="Is Superset open source?">
+Yes! Superset is open source and distributed under the Apache 2.0 License. You can view the source code, contribute, and use it freely at [github.com/superset-sh/superset](https://github.com/superset-sh/superset).
+</Accordion>
+
+<Accordion title="How much does it cost?">
+Superset is free and open source. You can download and use it at no cost.
+</Accordion>
+
+## Platform Support
+
+<Accordion title="Does Superset work on Windows or Linux?">
+Superset is currently built for macOS. Windows and Linux support is untested. Since it's open source, community contributions for cross-platform support are welcome!
+</Accordion>
+
+<Accordion title="What are the system requirements?">
+Superset requires:
+- **OS**: macOS (Windows/Linux untested)
+- **Runtime**: [Bun](https://bun.sh/) v1.0+
+- **Version Control**: Git 2.20+
+- **GitHub CLI**: [gh](https://cli.github.com/)
+- **Caddy**: [caddy](https://caddyserver.com/docs/install) (for dev server)
+
+See the [Installation](/installation) guide for installation instructions.
+</Accordion>
+
+## Agents
+
+<Accordion title="What coding agents are supported?">
+Superset works with **any CLI-based coding agent**, including:
+- Claude Code
+- OpenAI Codex CLI
+- Cursor Agent
+- Gemini CLI
+- GitHub Copilot
+- OpenCode
+- Any other agent that runs in a terminal
+
+If it runs in a terminal, it runs on Superset.
+</Accordion>
+
+<Accordion title="How many agents can I run simultaneously?">
+You can run as many agents as your system resources allow. Superset is designed to handle 10+ agents running in parallel. Each agent runs in its own isolated workspace (git worktree), so they don't interfere with each other.
+
+Performance depends on your:
+- Available CPU and memory
+- Number of active workspaces
+- Resource usage of individual agents
+</Accordion>
+
+<Accordion title="Can agents interfere with each other?">
+No. Each workspace runs in its own git worktree with its own branch and working directory. Changes made by one agent are completely isolated from others until you're ready to merge them.
+</Accordion>
+
+## Workspaces
+
+<Accordion title="What happens to my git history?">
+Superset uses git worktrees to create isolated workspaces. Each workspace:
+- Gets its own branch
+- Has its own working directory
+- Shares the same git repository and history
+- Can be merged back into your main branch like any other git branch
+
+Your main repository and git history remain untouched unless you explicitly merge changes.
+</Accordion>
+
+<Accordion title="How do I configure workspace setup and teardown?">
+Create a `.superset/config.json` file in your repository:
+
+```json
+{
+  "setup": ["./.superset/setup.sh"],
+  "teardown": ["./.superset/teardown.sh"]
+}
+```
+
+Setup scripts run when creating a workspace, teardown scripts run when deleting one. Scripts have access to:
+- `SUPERSET_WORKSPACE_NAME` - Name of the workspace
+- `SUPERSET_ROOT_PATH` - Path to the main repository
+
+See the [Setup & Teardown Scripts](/guides/setup-teardown-scripts) guide for details.
+</Accordion>
+
+<Accordion title="Can I use my own code editor?">
+Yes! Superset includes a built-in diff viewer for reviewing changes, but you can open any workspace in your favorite editor with `⌘O`. The workspace is just a standard git worktree, so it works with any editor or IDE.
+</Accordion>
+
+<Accordion title="What happens when I delete a workspace?">
+When you delete a workspace:
+1. Any teardown scripts (from `.superset/config.json`) run first
+2. The git worktree is removed
+3. The workspace branch remains in your repository
+
+You can manually delete the branch with `git branch -D <branch-name>` if desired.
+</Accordion>
+
+## Features
+
+<Accordion title="How does Superset compare to running agents manually?">
+Running agents manually:
+- ❌ Can only run one at a time
+- ❌ Need to manually manage branches and context switching
+- ❌ Changes can conflict
+- ❌ No centralized monitoring
+- ❌ Tedious setup for each task
+
+With Superset:
+- ✅ Run 10+ agents in parallel
+- ✅ Automatic workspace isolation with git worktrees
+- ✅ Built-in diff viewer and change monitoring
+- ✅ See all agent status at a glance
+- ✅ Automated setup/teardown scripts
+- ✅ Quick context switching with keyboard shortcuts
+</Accordion>
+
+<Accordion title="Can I customize keyboard shortcuts?">
+Yes! All shortcuts are customizable via Settings > Keyboard Shortcuts (`⌘/`). See the [Keyboard Shortcuts](/guides/keyboard-shortcuts) documentation for the full list.
+</Accordion>
+
+<Accordion title="Does Superset include an AI agent?">
+No. Superset is a terminal application that helps you run and manage **existing** CLI coding agents. It doesn't include its own agent - instead, it makes it easier to use agents you already have (Claude Code, Cursor, OpenCode, etc.).
+</Accordion>
+
+## Development
+
+<Accordion title="Can I contribute to Superset?">
+Absolutely! Superset is open source and welcomes contributions. See the [Contributing](/resources/contributing) guide for:
+- How to fork and create a PR
+- Development setup instructions
+- Code style guidelines
+- Community guidelines
+
+You can also:
+- Report bugs via [GitHub Issues](https://github.com/superset-sh/superset/issues)
+- Share ideas in [GitHub Discussions](https://github.com/superset-sh/superset/discussions)
+- Join the conversation on [Discord](https://discord.gg/cZeD9WYcV7)
+</Accordion>
+
+<Accordion title="How do I build Superset from source?">
+Clone the repository and follow the build instructions:
+
+```bash
+git clone https://github.com/superset-sh/superset.git
+cd superset
+
+# Set up environment
+cp .env.example .env
+echo 'SKIP_ENV_VALIDATION=1' >> .env
+
+# Install Caddy and create config
+brew install caddy
+cp Caddyfile.example Caddyfile
+
+# Install and run
+bun install
+bun run dev
+
+# Build desktop app
+bun run build
+open apps/desktop/release
+```
+
+See the [README](https://github.com/superset-sh/superset#build-from-source) for detailed instructions.
+</Accordion>
+
+<Accordion title="What's the tech stack?">
+Superset is built with:
+- **Desktop**: Electron
+- **Frontend**: React + TailwindCSS v4
+- **Runtime**: Bun
+- **Build**: Turborepo (monorepo)
+- **Database**: Drizzle ORM + Neon PostgreSQL
+- **UI Components**: shadcn/ui
+- **Code Quality**: Biome (formatting + linting)
+
+It's a Bun + Turbo monorepo with multiple apps and shared packages.
+</Accordion>
+
+## Support
+
+<Accordion title="Where can I get help?">
+If you need help:
+
+1. **Check the docs**: Browse the [documentation](/) for guides and tutorials
+2. **Troubleshooting**: See the [Troubleshooting](/resources/troubleshooting) page for common issues
+3. **Discord**: Join the [Discord community](https://discord.gg/cZeD9WYcV7) for real-time support
+4. **GitHub Discussions**: Ask questions in [Discussions](https://github.com/superset-sh/superset/discussions)
+5. **GitHub Issues**: Report bugs via [Issues](https://github.com/superset-sh/superset/issues)
+</Accordion>
+
+<Accordion title="How do I report a bug?">
+1. Search [existing issues](https://github.com/superset-sh/superset/issues) to avoid duplicates
+2. [Create a new issue](https://github.com/superset-sh/superset/issues/new) with:
+   - Clear description of the problem
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - System information (macOS version, Bun version, etc.)
+   - Error messages or logs
+
+See the [Troubleshooting](/resources/troubleshooting#reporting-bugs) page for details.
+</Accordion>
+
+<Accordion title="How can I request a feature?">
+- Open a [GitHub Issue](https://github.com/superset-sh/superset/issues/new) with the feature request
+- Start a discussion in [GitHub Discussions](https://github.com/superset-sh/superset/discussions)
+- Share your idea on [Discord](https://discord.gg/cZeD9WYcV7)
+
+Better yet, if you're able to implement it, [contribute](/resources/contributing) a pull request!
+</Accordion>

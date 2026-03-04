@@ -1,97 +1,282 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: Superset Documentation
+description: The terminal for coding agents - run multiple AI agents simultaneously with git worktree isolation
+mode: custom
 ---
 
-## Setting up
+<div className="relative overflow-hidden bg-[#0D0D0D] dark:bg-[#0D0D0D] py-20">
+  <div className="max-w-6xl mx-auto px-6 lg:px-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white dark:text-white mb-6">
+          The Terminal for Coding Agents
+        </h1>
+        <p className="text-lg sm:text-xl text-gray-300 dark:text-gray-300 mb-8 max-w-2xl">
+          Run an army of Claude Code, Codex, and other AI agents simultaneously on your machine. Isolate each task in its own git worktree, monitor all agents from one place, and ship faster.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <a 
+            href="/quickstart" 
+            className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-black bg-white rounded-lg hover:bg-gray-100 transition-colors no-underline"
+          >
+            Get started
+          </a>
+          <a 
+            href="/introduction" 
+            className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white bg-white/10 border border-white/30 rounded-lg hover:bg-white/20 hover:border-white/40 transition-colors no-underline"
+          >
+            View documentation
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="relative">
+          <img 
+            src="https://media.brand.dev/fec8b3ad-dd8e-48cc-b5c3-ee0a6c16e6cf.png" 
+            alt="Superset icon" 
+            noZoom
+            className="w-full h-auto max-w-md mx-auto"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-3">
+    Quick start
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Get Superset running in minutes and start orchestrating your agents
+  </p>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+  <Steps>
+    <Step title="Download Superset">
+      Download the latest release for macOS from GitHub or build from source.
+      
+      ```bash
+      # Option 1: Download pre-built app
+      # Visit https://github.com/superset-sh/superset/releases/latest
+      
+      # Option 2: Build from source
+      git clone https://github.com/superset-sh/superset.git
+      cd superset
+      bun install
+      bun run dev
+      ```
+    </Step>
 
-## Make it yours
+    <Step title="Create your first workspace">
+      Launch Superset and create a workspace for your project. Each workspace is isolated in its own git worktree.
+      
+      ```bash
+      # Keyboard shortcut
+      ⌘N (New workspace)
+      
+      # Or use quick create
+      ⌘⇧N
+      ```
+      
+      <Info>Workspaces automatically run setup scripts defined in `.superset/config.json` to install dependencies and configure your environment.</Info>
+    </Step>
 
-Design a docs site that looks great and empowers your users.
+    <Step title="Run your first agent">
+      Open a terminal in your workspace and start any CLI coding agent.
+      
+      ```bash
+      # Example: Claude Code
+      claude-code "Add authentication to the API"
+      
+      # Example: OpenAI Codex
+      codex "Implement user dashboard"
+      
+      # Any CLI agent works!
+      ```
+    </Step>
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+    <Step title="Monitor and review changes">
+      Watch your agent work in real-time. When it's done, review changes in the built-in diff viewer.
+      
+      ```bash
+      # Toggle changes panel
+      ⌘L
+      
+      # Open in external editor
+      ⌘O
+      ```
+      
+      <Tip>Use `⌘⌥↑/↓` to quickly switch between workspaces as different agents complete their tasks.</Tip>
+    </Step>
+  </Steps>
+</div>
 
-## Create beautiful pages
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-3">
+    Explore by topic
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Learn about core concepts and features that power Superset
+  </p>
 
-Everything you need to create world-class documentation.
+  <CardGroup cols={2}>
+    <Card title="Workspaces" icon="layer-group" href="/concepts/workspaces">
+      Isolated environments for each agent task using git worktrees
+    </Card>
+    <Card title="Agents" icon="robot" href="/concepts/agents">
+      Run any CLI coding agent - Claude Code, Codex, Cursor, and more
+    </Card>
+    <Card title="Keyboard shortcuts" icon="keyboard" href="/guides/keyboard-shortcuts">
+      Navigate between workspaces and control your terminal with shortcuts
+    </Card>
+    <Card title="Setup scripts" icon="file-code" href="/guides/setup-teardown-scripts">
+      Automate environment setup and teardown for each workspace
+    </Card>
+    <Card title="MCP servers" icon="server" href="/guides/mcp-servers">
+      Integrate with Model Context Protocol servers for enhanced agent capabilities
+    </Card>
+    <Card title="Integrations" icon="puzzle-piece" href="/guides/integrations">
+      Connect Superset with your favorite tools and services
+    </Card>
+  </CardGroup>
+</div>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-3">
+    Key features
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Everything you need to run coding agents at scale
+  </p>
 
-## Need inspiration?
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <a href="/concepts/workspaces" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#040404] dark:hover:border-[#a9a8a7] overflow-hidden transition-colors no-underline">
+      <div className="h-48 bg-[#121212] dark:bg-[#121212] flex items-center justify-center overflow-hidden">
+        <div className="text-6xl">⚡</div>
+      </div>
+      <div className="p-5 bg-white dark:bg-[#1a1d27]">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          Parallel execution
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Run 10+ coding agents simultaneously on your machine without context switching overhead
+        </p>
+        <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-[#040404] dark:group-hover:text-[#a9a8a7] transition-colors">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+    <a href="/concepts/worktrees" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#040404] dark:hover:border-[#a9a8a7] overflow-hidden transition-colors no-underline">
+      <div className="h-48 bg-[#121212] dark:bg-[#121212] flex items-center justify-center overflow-hidden">
+        <div className="text-6xl">🌲</div>
+      </div>
+      <div className="p-5 bg-white dark:bg-[#1a1d27]">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          Git worktree isolation
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Each task gets its own branch and working directory so agents never interfere with each other
+        </p>
+        <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-[#040404] dark:group-hover:text-[#a9a8a7] transition-colors">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a href="/guides/workspace-management" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#040404] dark:hover:border-[#a9a8a7] overflow-hidden transition-colors no-underline">
+      <div className="h-48 bg-[#121212] dark:bg-[#121212] flex items-center justify-center overflow-hidden">
+        <div className="text-6xl">📊</div>
+      </div>
+      <div className="p-5 bg-white dark:bg-[#1a1d27]">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          Built-in diff viewer
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Inspect and edit agent changes without leaving the app with a powerful diff viewer
+        </p>
+        <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-[#040404] dark:group-hover:text-[#a9a8a7] transition-colors">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a href="/guides/mcp-servers" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#040404] dark:hover:border-[#a9a8a7] overflow-hidden transition-colors no-underline">
+      <div className="h-48 bg-[#121212] dark:bg-[#121212] flex items-center justify-center overflow-hidden">
+        <div className="text-6xl">🔌</div>
+      </div>
+      <div className="p-5 bg-white dark:bg-[#1a1d27]">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          MCP server integration
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Connect to Model Context Protocol servers to give your agents superpowers
+        </p>
+        <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-[#040404] dark:group-hover:text-[#a9a8a7] transition-colors">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-3">
+    API and extensibility
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Build on top of Superset with our APIs and extension points
+  </p>
+
+  <CardGroup cols={2}>
+    <Card title="Desktop API" icon="desktop" href="/api/desktop-api">
+      Electron IPC APIs for programmatic control of workspaces and terminals
+    </Card>
+    <Card title="tRPC endpoints" icon="code" href="/api/trpc-endpoints">
+      Type-safe RPC endpoints for agent orchestration and state management
+    </Card>
+    <Card title="MCP servers" icon="plug" href="/api/mcp-servers">
+      Build custom MCP servers to extend agent capabilities
+    </Card>
+    <Card title="API overview" icon="book" href="/api/overview">
+      Complete API reference and integration guides
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-20 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl bg-[#121212] dark:bg-[#121212] border border-gray-200 dark:border-[#27272a] p-8 sm:p-12">
+    <h2 className="text-2xl sm:text-3xl font-bold text-white dark:text-white mb-4">
+      Ready to supercharge your development workflow?
+    </h2>
+    <p className="text-base sm:text-lg text-gray-300 dark:text-gray-300 mb-6 max-w-2xl">
+      Download Superset and start running multiple coding agents simultaneously. Wait less, ship more.
+    </p>
+    <div className="flex flex-col sm:flex-row gap-3">
+      <a 
+        href="/installation" 
+        className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-black bg-white rounded-lg hover:bg-gray-100 transition-colors no-underline"
+      >
+        Download now
+      </a>
+      <a 
+        href="https://github.com/superset-sh/superset" 
+        className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white bg-white/10 border border-white/30 rounded-lg hover:bg-white/20 hover:border-white/40 transition-colors no-underline"
+      >
+        View on GitHub
+      </a>
+    </div>
+  </div>
+</div>

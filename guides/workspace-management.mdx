@@ -1,0 +1,177 @@
+---
+title: Workspace Management
+description: Learn how to create, manage, and organize workspaces in Superset
+---
+
+Workspaces in Superset are isolated git worktrees that allow you to run multiple coding tasks in parallel without context switching. Each workspace has its own branch, dependencies, and environment.
+
+## Creating Workspaces
+
+<Steps>
+  <Step title="New Workspace">
+    Press `⌘N` to open the workspace creation dialog. You'll be prompted to:
+    - Select a project (git repository)
+    - Choose a base branch
+    - Name your workspace
+    - Set up initial configuration
+
+    Superset will create a new git worktree and run setup scripts automatically.
+  </Step>
+
+  <Step title="Quick Create">
+    Press `⌘⇧N` for quick workspace creation with default settings. This is useful when you need to spin up a workspace fast.
+  </Step>
+
+  <Step title="Open Existing Project">
+    Press `⌘⇧O` to open an existing project directory. This adds the project to Superset without creating a worktree.
+  </Step>
+</Steps>
+
+## Switching Between Workspaces
+
+<Tip>
+Workspace switching is instantaneous. All terminal sessions, scroll positions, and UI state are preserved when you switch away.
+</Tip>
+
+### Keyboard Navigation
+
+| Shortcut | Action |
+|:---------|:-------|
+| `⌘1-9` | Jump directly to workspace 1-9 |
+| `⌘⌥↑` | Switch to previous workspace |
+| `⌘⌥↓` | Switch to next workspace |
+
+### Using the Sidebar
+
+Press `⌘B` to toggle the workspaces sidebar. Click any workspace to switch to it.
+
+## Managing Workspace Files
+
+### Opening in External Apps
+
+Press `⌘O` to open the current workspace in your default editor or IDE. Superset detects common editors like:
+- VS Code
+- Cursor
+- Sublime Text
+- IntelliJ IDEA
+- And more
+
+<Note>
+You can configure your preferred editor in **Settings > Editor Preferences**.
+</Note>
+
+### Copying Paths
+
+Press `⌘⇧C` to copy the current workspace's absolute path to your clipboard. Useful for:
+- Opening in external tools
+- Scripting and automation
+- Sharing workspace locations
+
+## Reviewing Changes
+
+Press `⌘L` to toggle the changes panel. This shows:
+- Modified files
+- Staged changes
+- Untracked files
+- Diff previews
+
+You can:
+- Click files to view diffs
+- Stage/unstage changes
+- Commit directly from the panel
+- Open files in the editor
+
+## Deleting Workspaces
+
+<Warning>
+Deleting a workspace removes the git worktree and runs teardown scripts. Make sure you've committed or saved any important changes.
+</Warning>
+
+<Steps>
+  <Step title="Open Workspace Menu">
+    Right-click a workspace in the sidebar or use the workspace dropdown menu.
+  </Step>
+
+  <Step title="Select Delete">
+    Choose **Delete Workspace** from the menu.
+  </Step>
+
+  <Step title="Confirm Deletion">
+    Review the warning dialog and confirm. Superset will:
+    - Run teardown scripts (clean up databases, Docker containers, etc.)
+    - Remove the worktree
+    - Delete workspace-specific data
+  </Step>
+</Steps>
+
+## Workspace State Persistence
+
+Superset automatically saves and restores:
+- Open terminal tabs
+- Terminal scroll positions
+- Split pane layouts
+- Working directories
+- UI panel visibility
+
+When you switch back to a workspace, everything is exactly as you left it.
+
+## Best Practices
+
+<Card title="Name Workspaces by Task" icon="tag">
+  Use descriptive names like `fix-auth-bug` or `add-user-profile` instead of generic names like `workspace-1`.
+</Card>
+
+<Card title="Use Setup Scripts" icon="wrench">
+  Automate dependency installation and environment setup with `.superset/config.json` scripts. See [Setup/Teardown Scripts](/guides/setup-teardown-scripts) for details.
+</Card>
+
+<Card title="Commit Often" icon="git-branch">
+  Each workspace is a separate git worktree. Commit your work regularly so you can safely switch between tasks.
+</Card>
+
+<Card title="Clean Up Old Workspaces" icon="trash">
+  Delete workspaces when you're done with them to free up disk space and keep your workspace list manageable.
+</Card>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Workspace won't switch">
+    If a workspace appears stuck:
+    1. Check if any processes are waiting for input
+    2. Force-close blocking processes with `Ctrl+C`
+    3. Try switching to a different workspace first
+  </Accordion>
+
+  <Accordion title="Setup scripts failed">
+    If workspace creation fails during setup:
+    1. Check the terminal output for error messages
+    2. Fix any missing dependencies
+    3. Delete the workspace and try again
+    4. See [Setup/Teardown Scripts](/guides/setup-teardown-scripts) for debugging tips
+  </Accordion>
+
+  <Accordion title="Missing files after switching">
+    If files seem to disappear after switching workspaces:
+    1. Remember that each workspace is a separate git worktree
+    2. Changes in one workspace don't appear in others
+    3. Use `git status` to check what branch you're on
+  </Accordion>
+</AccordionGroup>
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Running Agents" icon="robot" href="/guides/running-agents">
+    Learn how to run coding agents in your workspaces
+  </Card>
+  <Card title="Setup Scripts" icon="file-code" href="/guides/setup-teardown-scripts">
+    Automate workspace initialization and cleanup
+  </Card>
+  <Card title="Keyboard Shortcuts" icon="keyboard" href="/guides/keyboard-shortcuts">
+    Master all available shortcuts
+  </Card>
+  <Card title="Integrations" icon="plug" href="/guides/integrations">
+    Connect Superset with your favorite tools
+  </Card>
+</CardGroup>

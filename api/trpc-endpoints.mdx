@@ -1,0 +1,557 @@
+---
+title: "tRPC Endpoints"
+description: "Cloud tRPC API for authentication, analytics, integrations, and multi-device management"
+---
+
+## Overview
+
+The cloud tRPC API (`packages/trpc/src/`) provides server-side procedures for user management, organizations, integrations, and cloud sync.
+
+**Root Router**: `packages/trpc/src/root.ts:17`
+
+```typescript
+export const appRouter = createTRPCRouter({
+  admin: adminRouter,
+  agent: agentRouter,
+  apiKey: apiKeyRouter,
+  analytics: analyticsRouter,
+  chat: chatRouter,
+  device: deviceRouter,
+  integration: integrationRouter,
+  organization: organizationRouter,
+  project: projectRouter,
+  task: taskRouter,
+  user: userRouter,
+  workspace: workspaceRouter,
+});
+
+export type AppRouter = typeof appRouter;
+```
+
+## Procedure Types
+
+Defined in `packages/trpc/src/trpc.ts:33`:
+
+### `publicProcedure`
+
+No authentication required.
+
+```typescript
+export const publicProcedure = t.procedure;
+```
+
+### `protectedProcedure`
+
+Requires valid session.
+
+```typescript
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.session) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Not authenticated. Please sign in.",
+    });
+  }
+  return next({ ctx: { session: ctx.session } });
+});
+```
+
+### `adminProcedure`
+
+Requires admin email domain (e.g., `@superset.sh`).
+
+```typescript
+export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  if (!ctx.session.user.email.endsWith(COMPANY.EMAIL_DOMAIN)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `Admin access requires ${COMPANY.EMAIL_DOMAIN} email.`,
+    });
+  }
+  return next({ ctx });
+});
+```
+
+---
+
+## User Router
+
+**Source**: `packages/trpc/src/router/user/`
+
+### `user.get`
+
+<ParamField query="none" type="void">
+  Get current authenticated user
+</ParamField>
+
+<ResponseField name="user" type="User">
+  <Expandable title="User object">
+    <ResponseField name="id" type="string">
+      User UUID
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      Email address
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Display name
+    </ResponseField>
+    <ResponseField name="image" type="string">
+      Avatar URL
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example**:
+
+```typescript
+const { data: user } = api.user.get.useQuery();
+```
+
+---
+
+## Workspace Router (Cloud)
+
+**Source**: `packages/trpc/src/router/workspace/workspace.ts:16`
+
+### `workspace.ensure`
+
+Upsert project and workspace in a transaction.
+
+<ParamField body="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+<ParamField body="project" type="object" required>
+  Project details
+  
+  <Expandable title="Project fields">
+    <ParamField body="name" type="string" required>
+      Project name
+    </ParamField>
+    <ParamField body="slug" type="string" required>
+      URL-safe slug
+    </ParamField>
+    <ParamField body="repoOwner" type="string" required>
+      GitHub repo owner
+    </ParamField>
+    <ParamField body="repoName" type="string" required>
+      GitHub repo name
+    </ParamField>
+    <ParamField body="repoUrl" type="string" required>
+      Repository URL
+    </ParamField>
+    <ParamField body="defaultBranch" type="string" default="main">
+      Default branch
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="workspace" type="object" required>
+  Workspace details
+  
+  <Expandable title="Workspace fields">
+    <ParamField body="id" type="string" required>
+      Workspace UUID
+    </ParamField>
+    <ParamField body="name" type="string" required>
+      Workspace name
+    </ParamField>
+    <ParamField body="type" type="'worktree' | 'main'" required>
+      Workspace type
+    </ParamField>
+    <ParamField body="config" type="object" required>
+      Workspace configuration
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="result" type="object">
+  <ResponseField name="projectId" type="string">
+    Created/existing project UUID
+  </ResponseField>
+  <ResponseField name="workspaceId" type="string">
+    Created/existing workspace UUID
+  </ResponseField>
+  <ResponseField name="txid" type="string">
+    Transaction ID
+  </ResponseField>
+</ResponseField>
+
+**Example**:
+
+```typescript
+const result = await api.workspace.ensure.mutate({
+  organizationId: 'org-123',
+  project: {
+    name: 'My Project',
+    slug: 'my-project',
+    repoOwner: 'acme',
+    repoName: 'app',
+    repoUrl: 'https://github.com/acme/app',
+    defaultBranch: 'main'
+  },
+  workspace: {
+    id: 'ws-123',
+    name: 'feature-auth',
+    type: 'worktree',
+    config: { branchName: 'feature/auth' }
+  }
+});
+```
+
+### `workspace.create`
+
+<ParamField body="projectId" type="string" required>
+  Project UUID
+</ParamField>
+
+<ParamField body="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Workspace name
+</ParamField>
+
+<ParamField body="type" type="'worktree' | 'main'" required>
+  Workspace type
+</ParamField>
+
+<ParamField body="config" type="object" required>
+  Workspace configuration
+</ParamField>
+
+**Returns**: Created workspace object
+
+### `workspace.delete`
+
+<ParamField body="id" type="string" required>
+  Workspace UUID
+</ParamField>
+
+<ParamField body="organizationId" type="string" required>
+  Organization UUID (for authorization)
+</ParamField>
+
+**Returns**: `{ success: true }`
+
+---
+
+## Integration Router
+
+**Source**: `packages/trpc/src/router/integration/`
+
+Supports GitHub, Linear, and Slack integrations.
+
+### GitHub Integration
+
+#### `integration.github.listRepos`
+
+<ParamField query="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+**Returns**: Array of accessible GitHub repositories
+
+#### `integration.github.createWebhook`
+
+<ParamField body="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+<ParamField body="repoOwner" type="string" required>
+  Repository owner
+</ParamField>
+
+<ParamField body="repoName" type="string" required>
+  Repository name
+</ParamField>
+
+<ParamField body="events" type="string[]" required>
+  Webhook events (e.g., `['push', 'pull_request']`)
+</ParamField>
+
+### Linear Integration
+
+#### `integration.linear.listIssues`
+
+<ParamField query="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+<ParamField query="teamId" type="string">
+  Filter by Linear team
+</ParamField>
+
+**Returns**: Array of Linear issues
+
+### Slack Integration
+
+#### `integration.slack.sendMessage`
+
+<ParamField body="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+<ParamField body="channel" type="string" required>
+  Slack channel ID
+</ParamField>
+
+<ParamField body="text" type="string" required>
+  Message text
+</ParamField>
+
+---
+
+## Device Router
+
+**Source**: `packages/trpc/src/router/device/`
+
+Manage multiple devices for multi-machine workflows.
+
+### `device.list`
+
+<ParamField query="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+**Returns**: Array of registered devices
+
+### `device.register`
+
+<ParamField body="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Device name
+</ParamField>
+
+<ParamField body="platform" type="'mac' | 'windows' | 'linux'" required>
+  Operating system
+</ParamField>
+
+**Returns**: Created device object with API key
+
+---
+
+## Task Router
+
+**Source**: `packages/trpc/src/router/task/`
+
+### `task.create`
+
+<ParamField body="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+<ParamField body="title" type="string" required>
+  Task title
+</ParamField>
+
+<ParamField body="description" type="string">
+  Task description
+</ParamField>
+
+<ParamField body="assigneeId" type="string">
+  User UUID to assign
+</ParamField>
+
+### `task.list`
+
+<ParamField query="organizationId" type="string" required>
+  Organization UUID
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by status
+</ParamField>
+
+**Returns**: Array of tasks
+
+---
+
+## Analytics Router
+
+**Source**: `packages/trpc/src/router/analytics/`
+
+### `analytics.track`
+
+<ParamField body="event" type="string" required>
+  Event name
+</ParamField>
+
+<ParamField body="properties" type="object">
+  Event properties
+</ParamField>
+
+**Example**:
+
+```typescript
+await api.analytics.track.mutate({
+  event: 'workspace_created',
+  properties: {
+    workspaceId: 'ws-123',
+    projectId: 'proj-456'
+  }
+});
+```
+
+---
+
+## Usage Patterns
+
+### Client Setup (Next.js)
+
+**File**: `apps/web/src/trpc/react.tsx`
+
+```typescript
+import { createTRPCReact } from '@trpc/react-query';
+import type { AppRouter } from '@superset/trpc';
+
+export const api = createTRPCReact<AppRouter>();
+
+export function TRPCProvider({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
+  const [trpcClient] = useState(() =>
+    api.createClient({
+      links: [
+        httpBatchLink({
+          url: '/api/trpc',
+        }),
+      ],
+    })
+  );
+
+  return (
+    <api.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    </api.Provider>
+  );
+}
+```
+
+### Server Setup (Next.js App Router)
+
+**File**: `apps/web/src/trpc/server.tsx`
+
+```typescript
+import { createCaller } from '@superset/trpc';
+import { auth } from '@superset/auth/server';
+
+export const api = async () => {
+  const session = await auth();
+  
+  return createCaller({
+    session,
+    auth,
+    headers: new Headers(),
+  });
+};
+```
+
+### React Component Usage
+
+```typescript
+import { api } from '@/trpc/react';
+
+function WorkspaceList() {
+  const { data: workspaces, isLoading } = api.workspace.list.useQuery({
+    organizationId: 'org-123'
+  });
+  
+  const createWorkspace = api.workspace.create.useMutation({
+    onSuccess: () => {
+      console.log('Workspace created!');
+    }
+  });
+  
+  return (
+    <div>
+      {workspaces?.map(ws => <div key={ws.id}>{ws.name}</div>)}
+      <button onClick={() => createWorkspace.mutate({
+        organizationId: 'org-123',
+        projectId: 'proj-123',
+        name: 'New Workspace',
+        type: 'worktree',
+        config: {}
+      })}>
+        Create Workspace
+      </button>
+    </div>
+  );
+}
+```
+
+### Server Component Usage (Next.js 15+)
+
+```typescript
+import { api } from '@/trpc/server';
+
+export default async function Page() {
+  const caller = await api();
+  const workspaces = await caller.workspace.list({
+    organizationId: 'org-123'
+  });
+  
+  return (
+    <ul>
+      {workspaces.map(ws => <li key={ws.id}>{ws.name}</li>)}
+    </ul>
+  );
+}
+```
+
+## Type Inference
+
+```typescript
+import type { AppRouter } from '@superset/trpc';
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
+
+type RouterInputs = inferRouterInputs<AppRouter>;
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+// Input type for workspace.create
+type CreateWorkspaceInput = RouterInputs['workspace']['create'];
+
+// Output type for workspace.list
+type WorkspaceList = RouterOutputs['workspace']['list'];
+```
+
+## Error Handling
+
+```typescript
+import { TRPCError } from '@trpc/server';
+
+try {
+  await api.workspace.create.mutate({ /* ... */ });
+} catch (error) {
+  if (error instanceof TRPCError) {
+    switch (error.code) {
+      case 'UNAUTHORIZED':
+        // Redirect to login
+        break;
+      case 'FORBIDDEN':
+        // Show permission error
+        break;
+      case 'BAD_REQUEST':
+        // Validate input
+        break;
+    }
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Desktop API" icon="desktop" href="/api/desktop-api">
+    Electron IPC APIs for local operations
+  </Card>
+  
+  <Card title="MCP Servers" icon="plug" href="/api/mcp-servers">
+    Build custom MCP servers for AI agents
+  </Card>
+</CardGroup>

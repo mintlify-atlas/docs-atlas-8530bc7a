@@ -1,0 +1,665 @@
+---
+title: Configuration
+description: Automate workspace setup and teardown with .superset/config.json
+---
+
+## Overview
+
+Superset allows you to automate workspace initialization and cleanup through configuration files. The `.superset/config.json` file in your repository root defines scripts that run when workspaces are created or deleted.
+
+<Info>
+  Configuration is **per-repository**. Each project can have its own setup and teardown logic.
+</Info>
+
+## .superset/config.json Format
+
+The configuration file uses a simple JSON structure:
+
+```json
+{
+  "setup": ["./path/to/script1.sh", "./path/to/script2.sh"],
+  "teardown": ["./path/to/cleanup.sh"]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `setup` | `string[]` | Scripts to run when creating a workspace |
+| `teardown` | `string[]` | Scripts to run when deleting a workspace |
+
+<Note>
+  Scripts are executed **in order**. If a script fails, subsequent scripts still run.
+</Note>
+
+## Setup Scripts
+
+Setup scripts run automatically when a workspace is created, before any [presets](/concepts/presets) execute.
+
+### When Setup Scripts Run
+
+1. User creates a workspace (`⌘N` or `⌘⇧N`)
+2. Superset creates git worktree
+3. **Setup scripts execute** ← You are here
+4. Terminal session starts
+5. Presets execute (if configured)
+
+### Example Setup Script
+
+Here's a typical setup script that prepares a workspace:
+
+```bash
+#!/usr/bin/env bash
+# .superset/setup.sh
+
+set -euo pipefail
+
+# Copy environment variables from main repo
+echo "Copying .env file..."
+cp "$SUPERSET_ROOT_PATH/.env" .env
+
+# Install dependencies
+echo "Installing dependencies..."
+bun install
+
+# Run database migrations
+echo "Running migrations..."
+bun run db:migrate
+
+# Seed test data (optional)
+if [ "$SUPERSET_WORKSPACE_NAME" = "test-workspace" ]; then
+  echo "Seeding test data..."
+  bun run db:seed
+fi
+
+echo "✓ Workspace setup complete!"
+```
+
+<Tip>
+  Make your setup scripts executable: `chmod +x .superset/setup.sh`
+</Tip>
+
+### Common Setup Tasks
+
+<CardGroup cols={2}>
+  <Card title="Copy .env Files" icon="file">
+    ```bash
+    cp "$SUPERSET_ROOT_PATH/.env" .env
+    ```
+    Git ignores `.env`, so copy it from the main repo.
+  </Card>
+  
+  <Card title="Install Dependencies" icon="download">
+    ```bash
+    bun install
+    # or: npm install, yarn, pnpm install
+    ```
+    Each worktree needs its own `node_modules`.
+  </Card>
+  
+  <Card title="Database Migrations" icon="database">
+    ```bash
+    bun run db:migrate
+    ```
+    Ensure database schema is up to date.
+  </Card>
+  
+  <Card title="Build Assets" icon="hammer">
+    ```bash
+    bun run build
+    ```
+    Pre-build assets if needed.
+  </Card>
+</CardGroup>
+
+## Teardown Scripts
+
+Teardown scripts run when a workspace is deleted, before the git worktree is removed.
+
+### When Teardown Scripts Run
+
+1. User deletes workspace
+2. Superset closes terminal sessions
+3. **Teardown scripts execute** ← You are here
+4. Git worktree is removed
+5. Workspace metadata cleaned up
+
+### Example Teardown Script
+
+```bash
+#!/usr/bin/env bash
+# .superset/teardown.sh
+
+set -euo pipefail
+
+echo "Cleaning up workspace: $SUPERSET_WORKSPACE_NAME"
+
+# Stop running services
+if [ -f .pid ]; then
+  echo "Stopping background services..."
+  kill $(cat .pid) 2>/dev/null || true
+  rm .pid
+fi
+
+# Clean temporary files
+echo "Removing temporary files..."
+rm -rf .tmp/ *.log
+
+# Archive important data
+if [ -d data/ ]; then
+  echo "Archiving data..."
+  tar -czf "$SUPERSET_ROOT_PATH/archives/$SUPERSET_WORKSPACE_NAME.tar.gz" data/
+fi
+
+echo "✓ Workspace cleanup complete!"
+```
+
+### Common Teardown Tasks
+
+<CardGroup cols={2}>
+  <Card title="Stop Services" icon="stop">
+    ```bash
+    pkill -f "my-dev-server" || true
+    ```
+    Kill long-running processes.
+  </Card>
+  
+  <Card title="Clean Temp Files" icon="trash">
+    ```bash
+    rm -rf .tmp/ *.log node_modules/.cache/
+    ```
+    Remove temporary data.
+  </Card>
+  
+  <Card title="Archive Data" icon="box-archive">
+    ```bash
+    tar -czf ~/archives/data.tar.gz data/
+    ```
+    Save important files before deletion.
+  </Card>
+  
+  <Card title="Cleanup Docker" icon="docker">
+    ```bash
+    docker-compose down
+    ```
+    Stop and remove containers.
+  </Card>
+</CardGroup>
+
+## Environment Variables in Scripts
+
+Scripts run with special environment variables provided by Superset:
+
+| Variable | Description | Example |
+|----------|-------------|----------|
+| `SUPERSET_WORKSPACE_NAME` | Name of the workspace | `"add-oauth-integration"` |
+| `SUPERSET_ROOT_PATH` | Absolute path to main repository | `"/Users/you/projects/my-app"` |
+
+### Using Environment Variables
+
+```bash
+#!/usr/bin/env bash
+# .superset/setup.sh
+
+echo "Setting up workspace: $SUPERSET_WORKSPACE_NAME"
+echo "Main repository: $SUPERSET_ROOT_PATH"
+
+# Copy files from main repo
+cp "$SUPERSET_ROOT_PATH/.env" .env
+cp "$SUPERSET_ROOT_PATH/.env.local" .env.local
+
+# Workspace-specific configuration
+if [[ "$SUPERSET_WORKSPACE_NAME" == *"production"* ]]; then
+  echo "Using production configuration"
+  cp "$SUPERSET_ROOT_PATH/.env.production" .env
+fi
+```
+
+<Warning>
+  Don't rely on `$PWD` or relative paths. Use `$SUPERSET_ROOT_PATH` to reference the main repository.
+</Warning>
+
+## Real Configuration Examples
+
+### Example 1: Node.js Project
+
+```json
+{
+  "setup": ["./.superset/setup.sh"],
+  "teardown": ["./.superset/teardown.sh"]
+}
+```
+
+**Setup script**:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Copy environment
+cp "$SUPERSET_ROOT_PATH/.env" .env
+
+# Install dependencies
+bun install
+
+# Build packages
+bun run build
+
+echo "✓ Ready to code!"
+```
+
+**Teardown script**:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Cleaning up $SUPERSET_WORKSPACE_NAME"
+
+# Remove node_modules to save space
+rm -rf node_modules
+
+echo "✓ Cleanup complete"
+```
+
+### Example 2: Python Project with Database
+
+```json
+{
+  "setup": [
+    "./.superset/scripts/setup-venv.sh",
+    "./.superset/scripts/setup-db.sh"
+  ],
+  "teardown": ["./.superset/scripts/cleanup.sh"]
+}
+```
+
+**setup-venv.sh**:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+echo "✓ Virtual environment ready"
+```
+
+**setup-db.sh**:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+source venv/bin/activate
+
+# Run migrations
+flask db upgrade
+
+# Seed test data
+flask seed
+
+echo "✓ Database ready"
+```
+
+**cleanup.sh**:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Drop test database
+flask db-drop || true
+
+# Remove virtual environment
+rm -rf venv
+
+echo "✓ Cleanup complete"
+```
+
+### Example 3: Docker Compose Project
+
+```json
+{
+  "setup": ["./.superset/docker-setup.sh"],
+  "teardown": ["./.superset/docker-teardown.sh"]
+}
+```
+
+**docker-setup.sh**:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Copy environment
+cp "$SUPERSET_ROOT_PATH/.env" .env
+
+# Allocate unique port for this workspace
+PORT_BASE=$((8000 + $(echo "$SUPERSET_WORKSPACE_NAME" | md5sum | grep -oE '[0-9]+' | head -1 | cut -c1-3)))
+echo "PORT=$PORT_BASE" >> .env
+
+# Start services
+docker-compose up -d
+
+echo "✓ Services running on port $PORT_BASE"
+```
+
+**docker-teardown.sh**:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Stop and remove containers
+docker-compose down -v
+
+echo "✓ Services stopped"
+```
+
+### Example 4: Monorepo with Selective Install
+
+```json
+{
+  "setup": ["./.superset/monorepo-setup.sh"],
+  "teardown": ["./.superset/monorepo-cleanup.sh"]
+}
+```
+
+**monorepo-setup.sh**:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Determine which packages to install based on workspace name
+if [[ "$SUPERSET_WORKSPACE_NAME" == *"frontend"* ]]; then
+  echo "Installing frontend dependencies only"
+  cd apps/web && bun install
+elif [[ "$SUPERSET_WORKSPACE_NAME" == *"api"* ]]; then
+  echo "Installing API dependencies only"
+  cd apps/api && bun install
+else
+  echo "Installing all dependencies"
+  bun install
+fi
+
+echo "✓ Dependencies installed"
+```
+
+### Example 5: Multi-Stage Setup
+
+```json
+{
+  "setup": [
+    "./.superset/stages/01-dependencies.sh",
+    "./.superset/stages/02-database.sh",
+    "./.superset/stages/03-build.sh",
+    "./.superset/stages/04-verify.sh"
+  ],
+  "teardown": ["./.superset/cleanup.sh"]
+}
+```
+
+This approach breaks setup into logical stages, making it easier to debug issues.
+
+## Script Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use set -euo pipefail" icon="shield">
+    Start scripts with:
+    ```bash
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ```
+    Exits on error, unset variables, and pipe failures.
+  </Card>
+  
+  <Card title="Provide Feedback" icon="comments">
+    ```bash
+    echo "Installing dependencies..."
+    bun install
+    echo "✓ Dependencies installed"
+    ```
+    Let users know what's happening.
+  </Card>
+  
+  <Card title="Handle Failures Gracefully" icon="life-ring">
+    ```bash
+    command || echo "Warning: command failed"
+    optional-cleanup || true
+    ```
+    Don't break setup for non-critical failures.
+  </Card>
+  
+  <Card title="Make Scripts Idempotent" icon="rotate">
+    ```bash
+    [ -d venv ] || python3 -m venv venv
+    ```
+    Safe to run multiple times without side effects.
+  </Card>
+</CardGroup>
+
+### Error Handling
+
+Handle errors gracefully to prevent setup failures:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Critical: exit if this fails
+cp "$SUPERSET_ROOT_PATH/.env" .env
+
+# Optional: continue if this fails
+optional-command || echo "Warning: optional-command failed (continuing)"
+
+# Always runs even if previous command fails
+trap "echo 'Setup incomplete but workspace is usable'" EXIT
+```
+
+### Performance Optimization
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Only install if package.json changed
+if [ ! -d node_modules ] || [ package.json -nt node_modules ]; then
+  echo "Installing dependencies..."
+  bun install
+else
+  echo "Dependencies up to date, skipping install"
+fi
+```
+
+## Debugging Scripts
+
+If setup or teardown scripts fail:
+
+### 1. Check Script Output
+
+Superset shows script output in the workspace creation dialog. Look for error messages.
+
+### 2. Run Scripts Manually
+
+Test scripts in a terminal:
+
+```bash
+cd ~/.superset/worktrees/my-project/test-workspace
+export SUPERSET_WORKSPACE_NAME="test-workspace"
+export SUPERSET_ROOT_PATH="$HOME/projects/my-project"
+bash .superset/setup.sh
+```
+
+### 3. Add Debug Output
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+set -x  # Enable debug output
+
+echo "DEBUG: SUPERSET_WORKSPACE_NAME=$SUPERSET_WORKSPACE_NAME"
+echo "DEBUG: SUPERSET_ROOT_PATH=$SUPERSET_ROOT_PATH"
+echo "DEBUG: PWD=$PWD"
+
+# Your script logic...
+```
+
+### 4. Check Permissions
+
+```bash
+# Make scripts executable
+chmod +x .superset/*.sh
+chmod +x .superset/scripts/*.sh
+```
+
+## Configuration Validation
+
+Superset validates `.superset/config.json` when loading a project:
+
+- ✅ Valid JSON syntax
+- ✅ `setup` and `teardown` are arrays of strings
+- ✅ Script paths are relative (not absolute)
+- ⚠️ Warning if script files don't exist
+- ⚠️ Warning if scripts aren't executable
+
+<Warning>
+  **Common mistake**: Using absolute paths in `config.json`. Always use relative paths:
+  
+  ✅ Good: `"./.superset/setup.sh"`
+  
+  ❌ Bad: `"/Users/you/project/.superset/setup.sh"`
+</Warning>
+
+## Relationship with Presets
+
+Setup scripts run **before** [presets](/concepts/presets):
+
+```
+Workspace Creation Flow:
+1. Create git worktree
+2. Run setup scripts     ← Prepare environment
+3. Start terminal
+4. Run preset commands   ← Launch tools/agents
+```
+
+**When to use setup scripts vs presets**:
+
+| Use Setup Scripts For | Use Presets For |
+|-----------------------|-----------------|
+| Copying `.env` files | Launching agents |
+| Installing dependencies | Starting dev servers |
+| Running migrations | Opening terminals |
+| Building assets | Running tests |
+| One-time initialization | Repeated tasks |
+
+<Tip>
+  **Setup scripts** configure the workspace. **Presets** launch tools in the workspace.
+</Tip>
+
+## Security Considerations
+
+<Warning>
+  Setup and teardown scripts run with your user permissions. Be careful with:
+  
+  - Scripts from untrusted sources
+  - Commands that modify files outside the workspace
+  - Scripts that access sensitive data
+</Warning>
+
+### Safe Practices
+
+1. **Review scripts before running**: Check `.superset/` contents in new projects
+2. **Limit scope**: Only modify files within the workspace
+3. **Avoid sudo**: Setup scripts shouldn't require elevated permissions
+4. **Validate inputs**: Don't trust environment variables blindly
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Validate environment variables
+if [ -z "${SUPERSET_WORKSPACE_NAME:-}" ]; then
+  echo "Error: SUPERSET_WORKSPACE_NAME not set"
+  exit 1
+fi
+
+if [ -z "${SUPERSET_ROOT_PATH:-}" ]; then
+  echo "Error: SUPERSET_ROOT_PATH not set"
+  exit 1
+fi
+
+# Your script logic...
+```
+
+## Advanced Use Cases
+
+### Conditional Logic Based on Branch
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Get current branch name
+BRANCH=$(git branch --show-current)
+
+if [[ "$BRANCH" == feature/* ]]; then
+  echo "Feature branch: using dev environment"
+  cp "$SUPERSET_ROOT_PATH/.env.dev" .env
+elif [[ "$BRANCH" == hotfix/* ]]; then
+  echo "Hotfix branch: using production environment"
+  cp "$SUPERSET_ROOT_PATH/.env.prod" .env
+fi
+```
+
+### Port Allocation
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Allocate unique port based on workspace name hash
+PORT_BASE=$((8000 + $(echo "$SUPERSET_WORKSPACE_NAME" | md5sum | cut -c1-4 | sed 's/^0*//' || echo 0)))
+
+echo "Allocated ports: $PORT_BASE - $((PORT_BASE + 10))"
+echo "API_PORT=$PORT_BASE" >> .env
+echo "WEB_PORT=$((PORT_BASE + 1))" >> .env
+```
+
+### Caching Dependencies
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+CACHE_DIR="$SUPERSET_ROOT_PATH/.superset-cache/node_modules"
+
+if [ -d "$CACHE_DIR" ]; then
+  echo "Copying cached node_modules..."
+  cp -R "$CACHE_DIR" node_modules
+  bun install  # Update to latest
+else
+  echo "Installing dependencies from scratch..."
+  bun install
+  echo "Caching node_modules for future workspaces..."
+  mkdir -p "$(dirname "$CACHE_DIR")"
+  cp -R node_modules "$CACHE_DIR"
+fi
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Presets" icon="rocket" href="/concepts/presets">
+    Configure workspace presets that run after setup
+  </Card>
+  
+  <Card title="Workspaces" icon="window" href="/concepts/workspaces">
+    Learn more about workspace creation
+  </Card>
+  
+  <Card title="Quickstart" icon="flag" href="/quickstart">
+    Create your first workspace with setup scripts
+  </Card>
+  
+  <Card title="Worktrees" icon="code-branch" href="/concepts/worktrees">
+    Understand git worktree mechanics
+  </Card>
+</CardGroup>

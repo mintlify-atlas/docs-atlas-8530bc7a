@@ -1,0 +1,269 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for Superset
+---
+
+## Common Issues
+
+### Installation Issues
+
+#### Bun not found
+
+Superset requires [Bun](https://bun.sh/) v1.0+ as the package manager.
+
+```bash
+# Install Bun (macOS/Linux)
+curl -fsSL https://bun.sh/install | bash
+
+# Verify installation
+bun --version
+```
+
+#### Dependencies fail to install
+
+If `bun install` fails:
+
+```bash
+# Clean and reinstall
+bun run clean
+bun run clean:workspaces
+rm -rf node_modules
+bun install
+```
+
+#### Environment variables missing
+
+If you see environment validation errors:
+
+Option 1: Configure all required variables
+```bash
+cp .env.example .env
+# Edit .env and fill in the values
+```
+
+Option 2: Skip validation for local testing
+```bash
+cp .env.example .env
+echo 'SKIP_ENV_VALIDATION=1' >> .env
+```
+
+### macOS-Specific Issues
+
+#### App won't open ("damaged" warning)
+
+If macOS blocks the app with a security warning:
+
+```bash
+# Remove the quarantine attribute
+xattr -cr /Applications/Superset.app
+```
+
+Alternatively, go to System Settings > Privacy & Security and click "Open Anyway".
+
+#### Caddy not found
+
+Superset uses Caddy as a reverse proxy for Electric SQL streams:
+
+```bash
+# Install Caddy
+brew install caddy
+
+# Copy example config
+cp Caddyfile.example Caddyfile
+```
+
+#### GitHub CLI not installed
+
+Some features require the GitHub CLI:
+
+```bash
+# Install gh
+brew install gh
+
+# Authenticate
+gh auth login
+```
+
+### Git Worktree Issues
+
+#### Worktree creation fails
+
+If workspace creation fails with git worktree errors:
+
+```bash
+# List existing worktrees
+git worktree list
+
+# Remove stale worktrees
+git worktree prune
+
+# Remove specific worktree
+git worktree remove <path>
+```
+
+#### Worktree branch conflicts
+
+If a branch already exists:
+
+```bash
+# Delete the branch
+git branch -D <branch-name>
+
+# Or choose a different workspace name
+```
+
+#### "Worktree already exists" error
+
+This happens if a previous workspace wasn't cleaned up properly:
+
+```bash
+# List all worktrees
+git worktree list
+
+# Remove the problematic worktree
+git worktree remove --force <path>
+
+# Clean up references
+git worktree prune
+```
+
+### Agent Connection Issues
+
+#### Agent not responding
+
+1. Check if the agent process is running in the terminal
+2. Look for error messages in the terminal output
+3. Try restarting the workspace
+4. Verify the agent CLI is installed and in PATH
+
+#### Agent commands not found
+
+Ensure the agent's CLI tool is installed:
+
+```bash
+# Example: Installing OpenCode
+npm install -g opencode
+
+# Example: Installing Cursor CLI
+cursor --install-cli
+```
+
+#### Permission denied errors
+
+Some agents may need execute permissions:
+
+```bash
+chmod +x /path/to/agent/binary
+```
+
+### Terminal Issues
+
+#### Terminal not displaying correctly
+
+1. Try clearing the terminal: `⌘K`
+2. Close and reopen the terminal tab: `⌘W` then `⌘T`
+3. Restart the workspace
+
+#### Copy/paste not working
+
+Use the standard macOS shortcuts:
+- Copy: `⌘C`
+- Paste: `⌘V`
+
+If still not working, try clicking in the terminal to ensure it has focus.
+
+#### Terminal font issues
+
+Configure terminal appearance in Settings > Terminal.
+
+### Performance Issues
+
+#### App running slowly
+
+1. **Close unused workspaces**: Each workspace runs in its own git worktree and consumes resources
+2. **Limit concurrent agents**: Running 10+ agents simultaneously requires significant CPU/memory
+3. **Check Activity Monitor**: Look for high CPU usage from agent processes
+4. **Clear terminal scrollback**: Use `⌘K` to clear terminal history
+
+#### High memory usage
+
+1. Close workspaces you're not actively using
+2. Restart long-running agent processes
+3. Check for memory leaks in agent processes
+
+#### Build failures
+
+If `bun run build` fails:
+
+```bash
+# Clean build artifacts
+bun run clean:workspaces
+
+# Run type checking
+bun run typecheck
+
+# Run linting
+bun run lint
+
+# Try building again
+bun run build
+```
+
+### Database Issues
+
+#### Database connection errors
+
+If you see database connection errors during development:
+
+1. Verify your `.env` file has the correct database credentials
+2. Check that you're not trying to connect to production (unless explicitly intended)
+3. Ensure your local database is running
+
+#### Migration errors
+
+Never manually edit files in `packages/db/drizzle/`. If you need to create a migration:
+
+1. Modify schema files in `packages/db/src/schema/`
+2. Run `bunx drizzle-kit generate --name="migration_name"`
+
+## Getting Help
+
+### Reporting Bugs
+
+If you encounter a bug:
+
+1. **Check existing issues**: Search [GitHub Issues](https://github.com/superset-sh/superset/issues) to see if it's already reported
+2. **Create a new issue**: If not found, [open a new issue](https://github.com/superset-sh/superset/issues/new) with:
+   - Clear description of the problem
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - System information (macOS version, Bun version, etc.)
+   - Relevant error messages or logs
+
+### Community Support
+
+Get help from the community:
+
+- **[Discord](https://discord.gg/cZeD9WYcV7)**: Real-time chat with the team and community
+- **[GitHub Discussions](https://github.com/superset-sh/superset/discussions)**: Ask questions and share ideas
+- **[Twitter](https://x.com/superset_sh)**: Follow for updates and announcements
+
+### Debug Logs
+
+When reporting issues, include:
+
+1. Terminal output from the failing command
+2. Console logs from Developer Tools (if applicable)
+3. Contents of error messages
+4. Your environment setup (OS version, Bun version, Git version)
+
+### Before Asking for Help
+
+1. Update to the latest version
+2. Try the troubleshooting steps above
+3. Search existing issues and discussions
+4. Provide clear reproduction steps
+
+## Still Having Issues?
+
+If none of the above solutions work, please reach out on [Discord](https://discord.gg/cZeD9WYcV7) or [open an issue](https://github.com/superset-sh/superset/issues/new) with detailed information about your problem.

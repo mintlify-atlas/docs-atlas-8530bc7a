@@ -1,0 +1,381 @@
+---
+title: Agents
+description: Running CLI coding agents in isolated Superset workspaces
+---
+
+## What are Agents in Superset?
+
+In Superset, an "agent" refers to any CLI-based coding assistant that can read, write, and execute code in a terminal environment. Superset doesn't provide the agents themselves — it provides the infrastructure to run multiple agents in parallel without conflicts.
+
+<Info>
+  Superset is **agent-agnostic**. If it runs in a terminal, it runs in Superset. No special integration required.
+</Info>
+
+## Universal CLI Agent Support
+
+Superset works with any command-line coding agent by:
+
+1. **Providing isolated workspaces** — Each agent runs in its own git worktree with dedicated terminal sessions
+2. **Monitoring agent activity** — Superset detects when agents make changes or need attention
+3. **Enabling parallel execution** — Run 10+ agents simultaneously without interference
+4. **Offering notification hooks** — Agents can notify Superset when they're ready for review
+
+You don't need plugins, extensions, or custom integrations. Just launch your agent in a Superset terminal.
+
+## Supported Agents
+
+Superset has been tested with the following CLI coding agents:
+
+<CardGroup cols={2}>
+  <Card title="Claude Code" icon="anthropic">
+    Anthropic's official CLI coding agent.
+    
+    **Status**: Fully supported  
+    **Launch**: `claude code`
+  </Card>
+  
+  <Card title="OpenCode" icon="code">
+    Open-source AI coding agent.
+    
+    **Status**: Fully supported  
+    **Launch**: `opencode`
+  </Card>
+  
+  <Card title="Codex CLI" icon="openai">
+    OpenAI's Codex command-line interface.
+    
+    **Status**: Fully supported  
+    **Launch**: `codex`
+  </Card>
+  
+  <Card title="Cursor Agent" icon="cursor">
+    Cursor's terminal-based agent mode.
+    
+    **Status**: Fully supported  
+    **Launch**: `cursor agent`
+  </Card>
+  
+  <Card title="Gemini CLI" icon="google">
+    Google's Gemini coding assistant.
+    
+    **Status**: Fully supported  
+    **Launch**: `gemini`
+  </Card>
+  
+  <Card title="GitHub Copilot" icon="github">
+    GitHub Copilot CLI for terminal.
+    
+    **Status**: Fully supported  
+    **Launch**: `gh copilot`
+  </Card>
+</CardGroup>
+
+<Note>
+  **Any CLI agent will work.** The agents listed above have been explicitly tested, but Superset's architecture supports any terminal-based tool.
+</Note>
+
+## How to Run Agents in Workspaces
+
+### 1. Create a Workspace
+
+First, create a workspace for your task:
+
+```bash
+# Via keyboard shortcut
+⌘N  # New workspace dialog
+⌘⇧N # Quick create with preset
+```
+
+Give your workspace a descriptive name (e.g., "Add OAuth Integration").
+
+### 2. Launch Your Agent
+
+Open a terminal in the workspace and launch your agent:
+
+```bash
+# Example: Claude Code
+Claude add OAuth login flow
+
+# Example: OpenCode
+opencode "refactor payment service to use Stripe API v3"
+
+# Example: Codex
+codex "write unit tests for the auth module"
+```
+
+The agent runs in the workspace's isolated environment. It can:
+
+- Read and modify files in the worktree
+- Install dependencies
+- Run build commands
+- Make git commits
+- Start development servers
+
+<Tip>
+  Each workspace has access to environment variables `SUPERSET_WORKSPACE_NAME` and `SUPERSET_ROOT_PATH` for scripting.
+</Tip>
+
+### 3. Monitor Agent Progress
+
+Superset automatically detects agent activity:
+
+- **Running**: Agent is actively working
+- **Review**: Agent has made changes and is waiting for feedback
+- **Idle**: Agent has finished or is waiting for input
+
+<Info>
+  Workspaces with agents needing attention show an **orange indicator** in the sidebar.
+</Info>
+
+### 4. Review Changes
+
+When the agent finishes:
+
+1. Switch to the workspace (`⌘[1-9]` or click in sidebar)
+2. Open the Changes panel (`⌘L`) to view diffs
+3. Review all modified files
+4. Give feedback or merge the changes
+
+## Agent Monitoring and Notifications
+
+Superset integrates with agents through a notification system:
+
+### Automatic Detection
+
+Superset monitors terminal output for agent activity patterns:
+
+- File modifications detected via git status
+- Process completion signals
+- Custom notification hooks (see below)
+
+### Agent Notification Hooks
+
+Agents can explicitly notify Superset using a special command:
+
+```bash
+# From within agent scripts
+superset-notify review "Task complete - please review changes"
+```
+
+Superset provides wrapper scripts for popular agents that automatically send notifications:
+
+- **Claude Code**: Wrapper at `~/.superset/wrappers/claude`
+- **OpenCode**: Plugin at `~/.opencode/plugins/superset-notify.js`
+- **Codex**: Wrapper at `~/.superset/wrappers/codex`
+- **Cursor**: Hook script via `.cursor/hooks.json`
+- **Copilot**: Hook script via `.github/copilot/hooks.json`
+
+<Accordion title="How agent wrappers work">
+  Agent wrappers are thin shell scripts that:
+  
+  1. Call the real agent binary
+  2. Monitor the agent's exit status
+  3. Send a notification to Superset when complete
+  4. Pass through all output unchanged
+  
+  Example wrapper structure:
+  
+  ```bash
+  #!/bin/bash
+  # Superset wrapper for agent
+  REAL_AGENT="/usr/local/bin/actual-agent"
+  "$REAL_AGENT" "$@"
+  EXIT_CODE=$?
+  
+  # Notify Superset
+  superset-notify review "Agent finished"
+  
+  exit $EXIT_CODE
+  ```
+</Accordion>
+
+## Real Examples of Agent Commands
+
+Here are practical examples of running agents in Superset workspaces:
+
+### Example 1: Feature Development
+
+```bash
+# Workspace: add-dark-mode
+# Agent: Claude Code
+Claude implement dark mode theme switching with system preference detection
+```
+
+### Example 2: Bug Fix
+
+```bash
+# Workspace: fix-race-condition
+# Agent: Codex
+codex "fix the race condition in websocket handler when multiple clients connect simultaneously"
+```
+
+### Example 3: Refactoring
+
+```bash
+# Workspace: refactor-api-v3
+# Agent: OpenCode  
+opencode "migrate all API endpoints from Express to Fastify, maintain backward compatibility"
+```
+
+### Example 4: Documentation
+
+```bash
+# Workspace: update-api-docs
+# Agent: Cursor
+cursor agent "update API documentation for v2 endpoints with new authentication flow"
+```
+
+### Example 5: Test Writing
+
+```bash
+# Workspace: auth-tests
+# Agent: Gemini
+gemini "write comprehensive unit tests for the authentication module, aim for 90% coverage"
+```
+
+## Running Multiple Agents in Parallel
+
+The real power of Superset is running many agents at once:
+
+```
+📁 Project: my-web-app
+
+🔵 Workspace 1: add-oauth
+   └─ Agent: Claude (Running)
+   └─ Task: Implement OAuth login
+
+🔵 Workspace 2: fix-memory-leak  
+   └─ Agent: Codex (Running)
+   └─ Task: Debug memory leak in background worker
+
+🟠 Workspace 3: api-docs
+   └─ Agent: Cursor (Review)
+   └─ Task: Update API documentation
+   └─ Status: Ready for review ⚠️
+
+🔵 Workspace 4: test-coverage
+   └─ Agent: OpenCode (Running)
+   └─ Task: Increase test coverage to 90%
+```
+
+Each agent works independently in its own worktree. When Agent 3 finishes, you review its changes while the others continue working.
+
+<Warning>
+  **Resource Considerations**: Each agent consumes CPU and memory. Most machines can comfortably run 5-10 agents concurrently. Monitor system resources when scaling up.
+</Warning>
+
+## Agent Environment Variables
+
+Agents running in Superset workspaces have access to special environment variables:
+
+| Variable | Description | Example |
+|----------|-------------|----------|
+| `SUPERSET_WORKSPACE_NAME` | Name of the current workspace | `"add-oauth-integration"` |
+| `SUPERSET_ROOT_PATH` | Path to the main repository | `"/Users/you/projects/my-app"` |
+
+Use these in your agent prompts or setup scripts:
+
+```bash
+# In a setup script
+echo "Setting up workspace: $SUPERSET_WORKSPACE_NAME"
+cp "$SUPERSET_ROOT_PATH/.env" .env
+```
+
+## Agent Isolation and Safety
+
+Superset ensures agents can't interfere with each other:
+
+<CardGroup cols={2}>
+  <Card title="Filesystem Isolation" icon="folder-tree">
+    Each workspace has its own working directory via git worktrees. Agents can't accidentally modify files in other workspaces.
+  </Card>
+  
+  <Card title="Branch Isolation" icon="code-branch">
+    Each workspace works on its own git branch. Commits from one agent never affect another agent's branch.
+  </Card>
+  
+  <Card title="Port Allocation" icon="network-wired">
+    Each workspace gets a dedicated range of 10 ports to avoid port conflicts when running dev servers.
+  </Card>
+  
+  <Card title="Process Isolation" icon="microchip">
+    Terminal sessions are fully isolated. Killing processes in one workspace doesn't affect others.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+### 1. Give Clear Instructions
+
+Agents work best with specific, well-defined tasks:
+
+✅ Good: "Add input validation to the signup form using Zod, including email format and password strength checks"
+
+❌ Bad: "Fix the signup form"
+
+### 2. Review Agent Output
+
+Always review agent changes before merging:
+
+- Open the Changes panel (`⌘L`)
+- Check all modified files
+- Run tests to verify correctness
+- Give feedback if changes need iteration
+
+### 3. Use Descriptive Workspace Names
+
+Name workspaces after the task, not the agent:
+
+✅ Good: "Add OAuth Integration"
+
+❌ Bad: "claude-task-1"
+
+### 4. Iterate in the Same Workspace
+
+If an agent's output needs improvement, give it feedback in the same workspace rather than creating a new one. This maintains context.
+
+### 5. Clean Up After Merging
+
+Delete workspaces after merging their changes to keep your workspace list manageable.
+
+## Troubleshooting
+
+<Accordion title="Agent not showing as 'Review' status">
+  If Superset doesn't detect when your agent finishes:
+  
+  1. Check if agent wrappers are installed (see [Configuration](/concepts/configuration))
+  2. Manually trigger review by right-clicking the workspace
+  3. Set up custom notification hooks for your agent
+</Accordion>
+
+<Accordion title="Agent can't access files">
+  Make sure you're running the agent inside the workspace's terminal, not your main repository terminal. Each workspace has its own working directory.
+</Accordion>
+
+<Accordion title="Port conflicts between workspaces">
+  Each workspace gets a dedicated port range (10 ports). If you need more ports, configure custom port allocation in your setup scripts.
+</Accordion>
+
+<Accordion title="Agent running out of memory">
+  Reduce the number of concurrent agents or increase your system's available memory. Close workspaces you're not actively using.
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Workspaces" icon="window" href="/concepts/workspaces">
+    Learn more about workspace isolation
+  </Card>
+  
+  <Card title="Presets" icon="rocket" href="/concepts/presets">
+    Create presets to auto-launch agents
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/concepts/configuration">
+    Set up agent notification hooks
+  </Card>
+  
+  <Card title="Worktrees" icon="code-branch" href="/concepts/worktrees">
+    Understand git worktree mechanics
+  </Card>
+</CardGroup>

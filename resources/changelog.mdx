@@ -1,0 +1,228 @@
+---
+title: Changelog
+description: Version history and release notes for Superset
+---
+
+## Release History
+
+Superset's complete version history and release notes are maintained on GitHub:
+
+**[View Changelog on GitHub Releases →](https://github.com/superset-sh/superset/releases)**
+
+## Latest Release
+
+To download the latest version of Superset:
+
+**[Download Latest Release →](https://github.com/superset-sh/superset/releases/latest)**
+
+## Checking Your Version
+
+### Desktop App
+
+To check which version you're running:
+
+1. Open Superset
+2. Go to **Superset > About Superset** (or `⌘,` then click "About")
+3. Your version number will be displayed
+
+### From Source
+
+If you're running from source, check the git tag:
+
+```bash
+cd superset
+git describe --tags
+```
+
+Or view the latest tag:
+
+```bash
+git tag --sort=-version:refname | head -n 1
+```
+
+## Release Cadence
+
+Superset follows a continuous release model:
+
+- **Stable releases**: Published when significant features or fixes are ready
+- **Canary releases**: Automated nightly builds for testing latest changes
+- **Patch releases**: Critical bug fixes and security updates
+
+## Stay Updated
+
+Get notified about new releases:
+
+- **Watch on GitHub**: Click "Watch" → "Custom" → "Releases" on the [repository](https://github.com/superset-sh/superset)
+- **Follow on Twitter**: [@superset_sh](https://x.com/superset_sh) for release announcements
+- **Join Discord**: [Discord community](https://discord.gg/cZeD9WYcV7) for early previews and discussions
+- **RSS Feed**: Subscribe to [GitHub releases RSS](https://github.com/superset-sh/superset/releases.atom)
+
+## Upgrading
+
+### Desktop App (Pre-built)
+
+1. Download the latest release from [GitHub Releases](https://github.com/superset-sh/superset/releases/latest)
+2. Open the downloaded `.dmg` file (macOS)
+3. Drag Superset to your Applications folder (replace existing)
+4. Launch the updated app
+
+Your workspaces and settings are preserved during updates.
+
+### From Source
+
+To update your local build:
+
+```bash
+# Pull latest changes
+git pull origin main
+
+# Update dependencies
+bun install
+
+# Rebuild
+bun run build
+```
+
+## Breaking Changes
+
+Superset aims to maintain backward compatibility whenever possible. Breaking changes are:
+
+- Clearly marked in release notes
+- Documented with migration guides
+- Announced in advance when possible
+
+Major version bumps (e.g., 1.x → 2.x) may include breaking changes. Minor and patch versions maintain compatibility.
+
+## Version Numbering
+
+Superset follows [Semantic Versioning](https://semver.org/):
+
+- **Major** (x.0.0): Breaking changes, major features
+- **Minor** (0.x.0): New features, backward compatible
+- **Patch** (0.0.x): Bug fixes, backward compatible
+
+Example: `1.2.3`
+- Major version: 1
+- Minor version: 2  
+- Patch version: 3
+
+## Release Types
+
+### Stable Releases
+
+Production-ready releases published to GitHub Releases:
+- Thoroughly tested
+- Includes release notes
+- Recommended for all users
+- Available as pre-built binaries
+
+### Canary Releases
+
+Experimental builds with latest changes:
+- Built automatically from main branch
+- May contain bugs or incomplete features
+- For testing and early feedback
+- Not recommended for production use
+
+To build a canary release:
+
+```bash
+bun run release:canary
+```
+
+### Desktop Releases
+
+Electron desktop app releases:
+
+```bash
+bun run release:desktop
+```
+
+This builds the desktop app for distribution.
+
+## Notable Changes
+
+Check the [GitHub Releases](https://github.com/superset-sh/superset/releases) page for:
+
+- New features and enhancements
+- Bug fixes
+- Performance improvements
+- Breaking changes and migrations
+- Known issues
+- Contributors
+
+Each release includes:
+- Version number and date
+- Detailed changelog
+- Download links for binaries
+- Upgrade instructions (if needed)
+
+## Beta & Preview Features
+
+Some features may be released as beta or preview:
+
+- **Beta**: Feature complete but may have bugs
+- **Preview**: Early access, subject to change
+
+These are clearly marked in release notes and documentation.
+
+## Deprecation Policy
+
+When features are deprecated:
+
+1. **Announcement**: Deprecated in release notes
+2. **Warning Period**: Continues to work with deprecation warnings
+3. **Removal**: Removed in next major version
+
+Deprecated features are supported for at least one major version cycle.
+
+## Security Updates
+
+Security vulnerabilities are:
+- Fixed as quickly as possible
+- Released as patch updates
+- Announced in release notes
+- Reported to [founders@superset.sh](mailto:founders@superset.sh)
+
+Critical security updates may be released outside the normal cadence.
+
+## Rollback
+
+If you need to rollback to a previous version:
+
+### Desktop App
+
+1. Download the desired version from [GitHub Releases](https://github.com/superset-sh/superset/releases)
+2. Install as normal
+
+### From Source
+
+```bash
+# Checkout specific version
+git checkout tags/v1.2.3
+
+# Reinstall dependencies
+bun install
+
+# Rebuild
+bun run build
+```
+
+## Contributing to Releases
+
+If you'd like to help with releases:
+
+- Test pre-release versions
+- Report bugs early
+- Provide feedback on new features
+- Contribute to release documentation
+
+See the [Contributing](/resources/contributing) guide for more information.
+
+## Questions?
+
+If you have questions about releases or upgrades:
+
+- Ask on [Discord](https://discord.gg/cZeD9WYcV7)
+- Open a [Discussion](https://github.com/superset-sh/superset/discussions)
+- Check [GitHub Issues](https://github.com/superset-sh/superset/issues)
