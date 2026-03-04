@@ -1,0 +1,89 @@
+{
+  "projectType": "saas",
+  "projectName": "Superset",
+  "projectDescription": "IDE for the AI Agents Era - Run an army of coding agents simultaneously on your machine",
+  "theme": "palm",
+  "primaryColor": "#040404",
+  "lightColor": "#7c7c7b",
+  "darkColor": "#a9a8a7",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/workspaces",
+              "concepts/agents",
+              "concepts/worktrees",
+              "concepts/presets",
+              "concepts/configuration"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/workspace-management",
+              "guides/running-agents",
+              "guides/keyboard-shortcuts",
+              "guides/setup-teardown-scripts",
+              "guides/integrations",
+              "guides/mcp-servers"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "resources/troubleshooting",
+              "resources/faq",
+              "resources/contributing",
+              "resources/changelog"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "APIs",
+            "pages": [
+              "api/overview",
+              "api/desktop-api",
+              "api/trpc-endpoints",
+              "api/mcp-servers"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Parallel agent execution",
+    "Git worktree isolation",
+    "Built-in diff viewer",
+    "Workspace presets",
+    "Universal CLI agent support",
+    "MCP server integration",
+    "Real-time agent monitoring",
+    "Keyboard-driven workflow"
+  ],
+  "publicApiSurface": [
+    "Workspace API",
+    "Agent orchestration API",
+    "Git worktree management",
+    "Terminal API",
+    "MCP server integration",
+    "tRPC endpoints",
+    "Desktop automation API"
+  ]
+}
